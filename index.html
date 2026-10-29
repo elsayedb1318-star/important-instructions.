@@ -11,7 +11,7 @@
 <body>
   <header class="topbar">
     <div class="brand"><span class="brand-icon">✉</span><div><strong>رسائلي</strong><small>رسائلك المهمة في مكان واحد</small></div></div>
-    <div class="top-actions"><span id="syncStatus" class="status">غير متصل بقاعدة البيانات</span><button id="authBtn" class="icon-btn">دخول الإدارة</button><button id="installBtn" class="icon-btn hidden" aria-label="تثبيت التطبيق">⬇</button></div>
+    <div class="top-actions"><span id="syncStatus" class="status">غير متصل بقاعدة البيانات</span><button id="installBtn" class="icon-btn hidden" aria-label="تثبيت التطبيق">⬇</button></div>
   </header>
 
   <main class="app-shell">
@@ -36,7 +36,7 @@
         <div class="chat-header">
           <div class="avatar">✉</div>
           <div class="chat-title"><h2 id="viewTitle"></h2><small id="viewDate"></small></div>
-          <div class="chat-tools"><button id="copyBtn" class="tool-btn">نسخ المحتوى</button><button id="shareBtn" class="tool-btn">مشاركة</button><button id="deleteBtn" class="tool-btn danger">حذف</button></div>
+          <div class="chat-tools"><button id="copyBtn" class="tool-btn">نسخ المحتوى</button><button id="shareBtn" class="tool-btn">مشاركة</button><button id="editBtn" class="tool-btn">تعديل</button><button id="deleteBtn" class="tool-btn danger">حذف</button></div>
         </div>
         <div class="message-area">
           <article id="messageBubble" class="message-bubble"></article>
@@ -49,8 +49,10 @@
     <form id="messageForm" method="dialog">
       <div class="dialog-head"><h2 id="dialogHeading">إضافة رسالة</h2><button type="button" id="closeDialog" class="close-btn">×</button></div>
       <label>عنوان الرسالة<input id="messageTitle" maxlength="120" required placeholder="مثال: تعليمات مهمة"></label>
-      <label>محتوى الرسالة<textarea id="messageContent" rows="8" required placeholder="الصق رسالة واتساب هنا أو اكتب المحتوى..."></textarea></label>
-      <div class="dialog-note">يمكنك لصق الرسالة يدويًا، أو مشاركتها من واتساب إلى «رسائلي» بعد تثبيت الصفحة كتطبيق.</div>
+      <label>محتوى الرسالة<textarea id="messageContent" rows="8" placeholder="اكتب المحتوى هنا... يمكنك إضافة صور أيضًا"></textarea></label>
+      <label class="image-picker-label">إضافة صور (يمكن اختيار أكثر من صورة)<input id="messageImages" type="file" accept="image/*" multiple></label>
+      <div id="imagePreview" class="image-preview"></div>
+      <div class="dialog-note">الصور يتم تصغير حجمها تلقائيًا لتسهيل حفظها ومشاركتها مع جميع المستخدمين. الحد الأقصى 4 صور لكل رسالة.</div>
       <div class="dialog-actions"><button type="button" id="cancelBtn" class="secondary-btn">إلغاء</button><button type="submit" class="primary-btn">حفظ الرسالة</button></div>
       <p id="formError" class="form-error"></p>
     </form>
@@ -59,8 +61,7 @@
 
   <!-- ضع إعدادات مشروع Firebase الخاص بك داخل firebase-config.js -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
   <script src="app.js"></script>
 </body>
