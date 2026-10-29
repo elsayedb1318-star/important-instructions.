@@ -52,7 +52,8 @@
   async function persistMessage(m){
     if(db){
       if(!auth || !auth.currentUser) throw new Error("ADMIN_LOGIN_REQUIRED");
-      await db.ref("savedMessages/"+m.id).set(m)
+      const { id: _localId, ...record } = m;
+      await db.ref("savedMessages/"+m.id).set(record)
     }
     else {const idx=messages.findIndex(x=>x.id===m.id);if(idx>=0)messages[idx]=m;else messages.unshift(m);saveLocal();render()}
   }
