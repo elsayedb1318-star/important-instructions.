@@ -1,0 +1,22 @@
+{
+  "name": "رسائلي - حفظ رسائل واتساب",
+  "short_name": "رسائلي",
+  "description": "احفظ رسائل واتساب المهمة وابحث فيها وشاركها مع فريقك",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#efeae2",
+  "theme_color": "#075e54",
+  "share_target": {
+    "action": "./",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}

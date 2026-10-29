@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#075e54">
+  <title>رسائلي - حفظ رسائل واتساب</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-icon">✉</span><div><strong>رسائلي</strong><small>رسائلك المهمة في مكان واحد</small></div></div>
+    <div class="top-actions"><span id="syncStatus" class="status">غير متصل بقاعدة البيانات</span><button id="installBtn" class="icon-btn hidden" aria-label="تثبيت التطبيق">⬇</button></div>
+  </header>
+
+  <main class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-heading"><h2>المحادثات</h2><button id="newBtn" class="round-btn" title="إضافة رسالة جديدة">＋</button></div>
+      <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="ابحث في العناوين والمحتوى..."></label>
+      <div id="conversationList" class="conversation-list">
+        <div class="empty-list">لا توجد رسائل بعد.<br>اضغط ＋ لإضافة أول رسالة.</div>
+      </div>
+      <div class="sidebar-footer">تظهر الرسائل هنا لجميع المستخدمين بعد ربط قاعدة البيانات المشتركة.</div>
+    </aside>
+
+    <section class="chat-panel">
+      <div id="welcome" class="welcome">
+        <div class="welcome-icon">✉</div>
+        <h2>رسائلك المهمة</h2>
+        <p>اختر محادثة من القائمة، أو أضف رسالة جديدة واحفظها للرجوع إليها لاحقًا.</p>
+        <button id="welcomeNewBtn" class="primary-btn">＋ إضافة رسالة</button>
+      </div>
+
+      <div id="chatView" class="chat-view hidden">
+        <div class="chat-header">
+          <div class="avatar">✉</div>
+          <div class="chat-title"><h2 id="viewTitle"></h2><small id="viewDate"></small></div>
+          <div class="chat-tools"><button id="copyBtn" class="tool-btn">نسخ المحتوى</button><button id="shareBtn" class="tool-btn">مشاركة</button><button id="deleteBtn" class="tool-btn danger">حذف</button></div>
+        </div>
+        <div class="message-area">
+          <article id="messageBubble" class="message-bubble"></article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="messageDialog">
+    <form id="messageForm" method="dialog">
+      <div class="dialog-head"><h2 id="dialogHeading">إضافة رسالة</h2><button type="button" id="closeDialog" class="close-btn">×</button></div>
+      <label>عنوان الرسالة<input id="messageTitle" maxlength="120" required placeholder="مثال: تعليمات مهمة"></label>
+      <label>محتوى الرسالة<textarea id="messageContent" rows="8" required placeholder="الصق رسالة واتساب هنا أو اكتب المحتوى..."></textarea></label>
+      <div class="dialog-note">يمكنك لصق الرسالة يدويًا، أو مشاركتها من واتساب إلى «رسائلي» بعد تثبيت الصفحة كتطبيق.</div>
+      <div class="dialog-actions"><button type="button" id="cancelBtn" class="secondary-btn">إلغاء</button><button type="submit" class="primary-btn">حفظ الرسالة</button></div>
+      <p id="formError" class="form-error"></p>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status"></div>
+
+  <!-- ضع إعدادات مشروع Firebase الخاص بك داخل firebase-config.js -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
