@@ -1,21 +1,14 @@
 /*
-  إعداد قاعدة البيانات المشتركة (Firebase):
-  1) أنشئ مشروعًا في Firebase Console.
-  2) أضف تطبيق Web وانسخ إعدادات firebaseConfig أدناه.
-  3) فعّل Realtime Database.
-  4) راجع ملف README.txt لإعداد قواعد آمنة.
-  لا تضع بيانات سرية أو مفاتيح إدارية هنا.
+  Firebase configuration for the Rasayeli web app.
+  Database access is controlled by Firebase Authentication and Realtime Database Security Rules.
 */
-window.FIREBASE_CONFIG = null;
-
-/* مثال للشكل فقط — استبدل القيم ببيانات مشروعك:
 window.FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBWlYAZVMawU5QG_yK6HRzN5KAWsqp9zCI",
+  authDomain: "important-instructions.firebaseapp.com",
+  databaseURL: "https://important-instructions-default-rtdb.firebaseio.com",
+  projectId: "important-instructions",
+  storageBucket: "important-instructions.firebasestorage.app",
+  messagingSenderId: "387756965772",
+  appId: "1:387756965772:web:3ff651e53e19a8a70ae0a9",
+  measurementId: "G-VKR411JP1P"
 };
-*/
