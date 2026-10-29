@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#075e54">
-  <title>رسائلي - حفظ رسائل واتساب</title>
+  <title>important-instructions - حفظ رسائل واتساب</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="brand-icon">✉</span><div><strong>رسائلي</strong><small>رسائلك المهمة في مكان واحد</small></div></div>
+    <div class="brand"><span class="brand-icon">✉</span><div><strong dir="ltr">important-instructions</strong><small>رسائلك المهمة في مكان واحد</small></div></div>
     <div class="top-actions"><span id="syncStatus" class="status">غير متصل بقاعدة البيانات</span><button id="installBtn" class="icon-btn hidden" aria-label="تثبيت التطبيق">⬇</button></div>
   </header>
 
@@ -62,6 +62,34 @@
   <!-- ضع إعدادات مشروع Firebase الخاص بك داخل firebase-config.js -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script>
+  (function(){
+    var PIN="1234"; /* غيّر الرقم السري من هنا */
+    var pass=false;
+    function ask(){
+      return new Promise(function(res){
+        var o=document.createElement("div");
+        o.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:99999";
+        o.innerHTML='<div style="background:#fff;color:#111;padding:20px;border-radius:14px;width:min(320px,90vw);text-align:center;font-family:inherit"><h3 style="margin:0 0 12px">الرقم السري</h3><input type="password" inputmode="numeric" autocomplete="off" style="width:100%;box-sizing:border-box;padding:10px;font-size:18px;text-align:center;border:1px solid #bbb;border-radius:8px"><p style="color:#c0392b;min-height:20px;margin:8px 0"></p><div style="display:flex;gap:8px"><button type="button" data-ok style="flex:1;padding:10px;border:0;border-radius:8px;background:#075e54;color:#fff;font-size:16px">تأكيد</button><button type="button" data-no style="flex:1;padding:10px;border:0;border-radius:8px;background:#ddd;font-size:16px">إلغاء</button></div></div>';
+        document.body.appendChild(o);
+        var i=o.querySelector("input"),m=o.querySelector("p");
+        function done(v){o.remove();res(v);}
+        function check(){ if(i.value===PIN) done(true); else {m.textContent="الرقم السري غير صحيح";i.value="";i.focus();} }
+        o.querySelector("[data-ok]").onclick=check;
+        o.querySelector("[data-no]").onclick=function(){done(false);};
+        i.addEventListener("keydown",function(e){ if(e.key==="Enter"){e.preventDefault();check();} });
+        i.focus();
+      });
+    }
+    document.addEventListener("click",function(e){
+      var b=e.target.closest&&e.target.closest("#newBtn,#welcomeNewBtn,#editBtn,#deleteBtn");
+      if(!b) return;
+      if(pass){pass=false;return;}
+      e.stopImmediatePropagation();e.preventDefault();
+      ask().then(function(ok){ if(ok){pass=true;b.click();} });
+    },true);
+  })();
+  </script>
   <script src="firebase-config.js"></script>
   <script src="app.js"></script>
 </body>
