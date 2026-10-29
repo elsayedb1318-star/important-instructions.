@@ -21,7 +21,7 @@
         messages=Object.entries(data).map(([id,v])=>({...v,id})).sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
         setStatus("متصل — التعديل متاح للجميع",true);
         render();
-      },err=>{setStatus("تعذر الاتصال بقاعدة البيانات");console.error(err);});
+      },err=>{setStatus("تعذر الاتصال بقاعدة البيانات");console.error("Firebase read error:",err);toast("خطأ اتصال: "+(err&&err.code?err.code:"راجع إعدادات Firebase"));});
     }catch(e){console.error(e);messages=loadLocal();setStatus("إعداد قاعدة البيانات غير صحيح");render()}
   }
   function render(){
@@ -83,7 +83,7 @@
     const m={id,title,content,imagesJson:JSON.stringify(pendingImages),createdAt:old?.createdAt||now,updatedAt:now};
     if(m.imagesJson.length>1400000){$("formError").textContent="حجم الصور كبير. جرّب صورًا أقل أو أصغر حجمًا.";return}
     try{await persistMessage(m);selectedId=id;closeDialog();render();toast(db?"تم حفظ الرسالة ومشاركتها مع الجميع":"تم حفظ الرسالة على هذا الجهاز فقط")}
-    catch(err){console.error(err);$("formError").textContent="لم يتم الحفظ. تحقق من إعدادات قاعدة البيانات وقواعد الوصول."}
+    catch(err){console.error("Rasayeli save error:",err);const code=err&&err.code?" ("+err.code+")":"";const detail=err&&err.message?" — "+err.message:"";$("formError").textContent="لم يتم الحفظ"+code+detail;}
   });
   $("copyBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;try{await navigator.clipboard.writeText(m.content||"");toast("تم نسخ النص")}catch{toast("تعذر النسخ؛ حدد النص وانسخه يدويًا")}});
   $("shareBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;try{if(navigator.share)await navigator.share({title:m.title,text:m.content});else{await navigator.clipboard.writeText(m.title+"\n\n"+m.content);toast("تم نسخ الرسالة للمشاركة")}}catch{}});
