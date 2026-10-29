@@ -1,7 +1,7 @@
 (() => {
   const $ = id => document.getElementById(id);
   const listEl = $("conversationList"), dialog = $("messageDialog");
-  let messages = [], selectedId = null, editingId = null, db = null, installPrompt = null;
+  let messages = [], selectedId = null, editingId = null, db = null, auth = null, installPrompt = null;
   const localKey = "rasayeli_local_messages_v1";
   const escapeHtml = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const dateText = v => { try { return new Date(v).toLocaleDateString("ar-EG",{year:"numeric",month:"short",day:"numeric"}); } catch { return ""; } };
@@ -15,10 +15,18 @@
     try{
       if(!firebase.apps.length) firebase.initializeApp(c);
       db=firebase.database();
+      auth=firebase.auth();
+      auth.onAuthStateChanged(user=>{
+        $("authBtn").textContent = user ? "خروج الإدارة" : "دخول الإدارة";
+        if(user) setStatus("متصل — دخول الإدارة مفعّل",true);
+        else setStatus("عرض مشترك — دخول الإدارة مطلوب للإضافة");
+      });
       db.ref("savedMessages").on("value", snap=>{
         const data=snap.val()||{};
         messages=Object.entries(data).map(([id,v])=>({...v,id})).sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
-        setStatus("متصل — الرسائل مشتركة",true);render();
+        if(auth && auth.currentUser) setStatus("متصل — دخول الإدارة مفعّل",true);
+        else setStatus("عرض مشترك — دخول الإدارة مطلوب للإضافة");
+        render();
       },err=>{setStatus("تعذر الاتصال بقاعدة البيانات");console.error(err);});
     }catch(e){console.error(e);messages=loadLocal();setStatus("إعداد قاعدة البيانات غير صحيح");render()}
   }
@@ -42,9 +50,27 @@
   function openNew(){editingId=null;$("dialogHeading").textContent="إضافة رسالة جديدة";$("messageTitle").value="";$("messageContent").value="";$("formError").textContent="";dialog.showModal()}
   function closeDialog(){dialog.close()}
   async function persistMessage(m){
-    if(db){await db.ref("savedMessages/"+m.id).set(m)}
+    if(db){
+      if(!auth || !auth.currentUser) throw new Error("ADMIN_LOGIN_REQUIRED");
+      await db.ref("savedMessages/"+m.id).set(m)
+    }
     else {const idx=messages.findIndex(x=>x.id===m.id);if(idx>=0)messages[idx]=m;else messages.unshift(m);saveLocal();render()}
   }
+
+  $("authBtn").addEventListener("click", async () => {
+    if(!auth){toast("أكمل إعداد Firebase أولًا");return}
+    if(auth.currentUser){
+      try { await auth.signOut(); toast("تم تسجيل الخروج من الإدارة"); }
+      catch(e){ toast("تعذر تسجيل الخروج"); }
+      return;
+    }
+    const email = prompt("أدخل بريد حساب الإدارة الذي أنشأته في Firebase Authentication:");
+    if(!email) return;
+    const password = prompt("أدخل كلمة مرور حساب الإدارة:");
+    if(!password) return;
+    try { await auth.signInWithEmailAndPassword(email.trim(), password); toast("تم تسجيل الدخول بنجاح"); }
+    catch(e){ console.error(e); toast("فشل تسجيل الدخول. تأكد من البريد وكلمة المرور وتفعيل Email/Password"); }
+  });
   $("newBtn").addEventListener("click",openNew);$("welcomeNewBtn").addEventListener("click",openNew);
   $("closeDialog").addEventListener("click",closeDialog);$("cancelBtn").addEventListener("click",closeDialog);
   $("searchInput").addEventListener("input",render);
@@ -55,11 +81,11 @@
     const id=editingId||(db?db.ref("savedMessages").push().key:"local_"+now+"_"+Math.random().toString(36).slice(2,8));
     const m={id,title,content,createdAt:old?.createdAt||now,updatedAt:now};
     try{await persistMessage(m);selectedId=id;closeDialog();render();toast(db?"تم حفظ الرسالة ومشاركتها مع الجميع":"تم حفظ الرسالة على هذا الجهاز فقط")}
-    catch(err){console.error(err);$("formError").textContent="لم يتم الحفظ. تحقق من إعدادات قاعدة البيانات وقواعد الوصول."}
+    catch(err){console.error(err);$("formError").textContent=err.message==="ADMIN_LOGIN_REQUIRED"?"يجب تسجيل الدخول بحساب الإدارة قبل إضافة الرسائل.":"لم يتم الحفظ. تحقق من إعدادات قاعدة البيانات وقواعد الوصول."}
   });
   $("copyBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;try{await navigator.clipboard.writeText(m.content);toast("تم نسخ المحتوى")}catch{toast("تعذر النسخ؛ حدد النص وانسخه يدويًا")}});
   $("shareBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;try{if(navigator.share)await navigator.share({title:m.title,text:m.content});else{await navigator.clipboard.writeText(m.title+"\n\n"+m.content);toast("تم نسخ الرسالة للمشاركة")}}catch{}});
-  $("deleteBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;if(!confirm("هل تريد حذف هذه الرسالة من القائمة المشتركة؟"))return;try{if(db)await db.ref("savedMessages/"+m.id).remove();else{messages=messages.filter(x=>x.id!==m.id);saveLocal()}selectedId=null;render();showWelcome();toast("تم حذف الرسالة")}catch(e){toast("تعذر الحذف. تحقق من صلاحيات قاعدة البيانات")}});
+  $("deleteBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;if(db && (!auth || !auth.currentUser)){toast("يجب تسجيل الدخول بحساب الإدارة للحذف");return}if(!confirm("هل تريد حذف هذه الرسالة من القائمة المشتركة؟"))return;try{if(db)await db.ref("savedMessages/"+m.id).remove();else{messages=messages.filter(x=>x.id!==m.id);saveLocal()}selectedId=null;render();showWelcome();toast("تم حذف الرسالة")}catch(e){toast("تعذر الحذف. تحقق من صلاحيات قاعدة البيانات")}});
   // استقبال نصوص من قائمة مشاركة Android/Chrome عند تثبيت التطبيق.
   const params=new URLSearchParams(location.search);
   const sharedText=params.get("text")||params.get("title")||"";

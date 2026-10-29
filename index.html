@@ -11,7 +11,7 @@
 <body>
   <header class="topbar">
     <div class="brand"><span class="brand-icon">✉</span><div><strong>رسائلي</strong><small>رسائلك المهمة في مكان واحد</small></div></div>
-    <div class="top-actions"><span id="syncStatus" class="status">غير متصل بقاعدة البيانات</span><button id="installBtn" class="icon-btn hidden" aria-label="تثبيت التطبيق">⬇</button></div>
+    <div class="top-actions"><span id="syncStatus" class="status">غير متصل بقاعدة البيانات</span><button id="authBtn" class="icon-btn">دخول الإدارة</button><button id="installBtn" class="icon-btn hidden" aria-label="تثبيت التطبيق">⬇</button></div>
   </header>
 
   <main class="app-shell">
@@ -59,6 +59,7 @@
 
   <!-- ضع إعدادات مشروع Firebase الخاص بك داخل firebase-config.js -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
   <script src="app.js"></script>
