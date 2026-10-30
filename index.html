@@ -16,7 +16,7 @@
 
   <main class="app-shell">
     <aside class="sidebar">
-      <div class="sidebar-heading"><h2>المحادثات</h2><button id="newBtn" class="round-btn" title="إضافة رسالة جديدة">＋</button></div>
+      <div class="sidebar-heading"><h2>المحادثات</h2><div class="heading-btns"><button id="reorderBtn" class="round-btn" title="ترتيب الرسائل">⇅</button><button id="newBtn" class="round-btn" title="إضافة رسالة جديدة">＋</button></div></div>
       <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="ابحث في العناوين والمحتوى..."></label>
       <div id="conversationList" class="conversation-list">
         <div class="empty-list">لا توجد رسائل بعد.<br>اضغط ＋ لإضافة أول رسالة.</div>
@@ -82,9 +82,10 @@
       });
     }
     document.addEventListener("click",function(e){
-      var b=e.target.closest&&e.target.closest("#newBtn,#welcomeNewBtn,#editBtn,#deleteBtn");
+      var b=e.target.closest&&e.target.closest("#newBtn,#welcomeNewBtn,#editBtn,#deleteBtn,#reorderBtn");
       if(!b) return;
       if(pass){pass=false;return;}
+      if(b.id==="reorderBtn"&&b.classList.contains("on")) return;
       e.stopImmediatePropagation();e.preventDefault();
       ask().then(function(ok){ if(ok){pass=true;b.click();} });
     },true);

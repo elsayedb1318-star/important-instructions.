@@ -1,13 +1,16 @@
 (() => {
   const $ = id => document.getElementById(id);
   const listEl = $("conversationList"), dialog = $("messageDialog");
-  let messages = [], selectedId = null, editingId = null, db = null, installPrompt = null, pendingImages = [];
+  let messages = [], reorderMode = false, selectedId = null, editingId = null, db = null, installPrompt = null, pendingImages = [];
   const localKey = "rasayeli_local_messages_v1";
   const escapeHtml = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const dateText = v => { try { return new Date(v).toLocaleDateString("ar-EG",{year:"numeric",month:"short",day:"numeric"}); } catch { return ""; } };
   function toast(s){ const t=$("toast");t.textContent=s;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2600); }
   function setStatus(s,good=false){$("syncStatus").textContent=s;$("syncStatus").style.color=good?"#c9f5df":"#f9d7c7";}
-  function loadLocal(){try{return JSON.parse(localStorage.getItem(localKey)||"[]")}catch{return []}}
+  const sortKey = m => typeof m.order === "number" ? m.order : -(m.updatedAt || m.createdAt || 0);
+  const sortMsgs = arr => arr.sort((a, b) => sortKey(a) - sortKey(b));
+  function newOrder(){ const o = messages.filter(m => typeof m.order === "number").map(m => m.order); return o.length ? Math.min(...o) - 1 : -Date.now(); }
+  function loadLocal(){try{return sortMsgs(JSON.parse(localStorage.getItem(localKey)||"[]"))}catch{return []}}
   function saveLocal(){localStorage.setItem(localKey,JSON.stringify(messages))}
   function initFirebase(){
     const c=window.FIREBASE_CONFIG;
@@ -18,7 +21,7 @@
       setStatus("متصل — التعديل متاح للجميع",true);
       db.ref("savedMessages").on("value", snap=>{
         const data=snap.val()||{};
-        messages=Object.entries(data).map(([id,v])=>({...v,id})).sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
+        messages=sortMsgs(Object.entries(data).map(([id,v])=>({...v,id})));
         setStatus("متصل — التعديل متاح للجميع",true);
         render();
       },err=>{setStatus("تعذر الاتصال بقاعدة البيانات");console.error("Firebase read error:",err);toast("خطأ اتصال: "+(err&&err.code?err.code:"راجع إعدادات Firebase"));});
@@ -28,11 +31,24 @@
     const q=$("searchInput").value.trim().toLocaleLowerCase();
     const filtered=messages.filter(m=>`${m.title||""}\n${m.content||""}`.toLocaleLowerCase().includes(q));
     if(!filtered.length){listEl.innerHTML=`<div class="empty-list">${q?"لا توجد نتائج مطابقة.":"لا توجد رسائل بعد.<br>اضغط ＋ لإضافة أول رسالة."}</div>`}
-    else listEl.innerHTML=filtered.map(m=>`<div class="conversation ${m.id===selectedId?"active":""}" data-id="${escapeHtml(m.id)}"><div class="avatar">✉</div><div class="conversation-info"><h3>${escapeHtml(m.title)}</h3><p>${escapeHtml((m.content||"").replace(/\s+/g," ").slice(0,90) || (readImages(m).length ? "📷 صورة مرفقة" : "بدون نص"))}</p></div><time>${escapeHtml(dateText(m.updatedAt||m.createdAt))}</time></div>`).join("");
+    else listEl.innerHTML=filtered.map(m=>`<div class="conversation ${m.id===selectedId?"active":""}" data-id="${escapeHtml(m.id)}"><div class="avatar">✉</div><div class="conversation-info"><h3>${escapeHtml(m.title)}</h3><p>${escapeHtml((m.content||"").replace(/\s+/g," ").slice(0,90) || (readImages(m).length ? "📷 صورة مرفقة" : "بدون نص"))}</p></div><time>${escapeHtml(dateText(m.updatedAt||m.createdAt))}</time>${reorderMode&&!q?`<div class="move-btns"><button type="button" data-move="-1" aria-label="تحريك لأعلى">▲</button><button type="button" data-move="1" aria-label="تحريك لأسفل">▼</button></div>`:""}</div>`).join("");
     listEl.querySelectorAll(".conversation").forEach(el=>el.addEventListener("click",()=>selectMessage(el.dataset.id)));
+    listEl.querySelectorAll("[data-move]").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();moveMessage(b.closest(".conversation").dataset.id,Number(b.dataset.move))}));
     if(selectedId && !messages.some(m=>m.id===selectedId)){selectedId=null;showWelcome()}
     else if(selectedId) showMessage();
   }
+  async function moveMessage(id,dir){
+    const i=messages.findIndex(m=>m.id===id),j=i+dir;
+    if(i<0||j<0||j>=messages.length)return;
+    const arr=messages.slice();[arr[i],arr[j]]=[arr[j],arr[i]];
+    arr.forEach((m,k)=>{m.order=k});
+    messages=arr;render();
+    try{
+      if(db){const u={};arr.forEach(m=>{u[m.id+"/order"]=m.order});await db.ref("savedMessages").update(u)}
+      else saveLocal();
+    }catch(e){console.error(e);toast("تعذر حفظ الترتيب. تحقق من صلاحيات قاعدة البيانات")}
+  }
+  $("reorderBtn").addEventListener("click",()=>{reorderMode=!reorderMode;$("reorderBtn").classList.toggle("on",reorderMode);if(reorderMode&&$("searchInput").value.trim())toast("امسح البحث لتحريك الرسائل");render()});
   function selectMessage(id){selectedId=id;render()}
   function showWelcome(){$("welcome").classList.remove("hidden");$("chatView").classList.add("hidden")}
   function readImages(m){
@@ -58,7 +74,7 @@
       const { id: _localId, ...record } = m;
       await db.ref("savedMessages/"+m.id).set(record)
     }
-    else {const idx=messages.findIndex(x=>x.id===m.id);if(idx>=0)messages[idx]=m;else messages.unshift(m);saveLocal();render()}
+    else {const idx=messages.findIndex(x=>x.id===m.id);if(idx>=0)messages[idx]=m;else messages.unshift(m);sortMsgs(messages);saveLocal();render()}
   }
 
   function resizeImage(file){return new Promise((resolve,reject)=>{
@@ -81,6 +97,7 @@
     const now=Date.now(), old=messages.find(m=>m.id===editingId);
     const id=editingId||(db?db.ref("savedMessages").push().key:"local_"+now+"_"+Math.random().toString(36).slice(2,8));
     const m={id,title,content,imagesJson:JSON.stringify(pendingImages),createdAt:old?.createdAt||now,updatedAt:now};
+    const ord=old?old.order:newOrder();if(typeof ord==="number")m.order=ord;
     if(m.imagesJson.length>1400000){$("formError").textContent="حجم الصور كبير. جرّب صورًا أقل أو أصغر حجمًا.";return}
     try{await persistMessage(m);selectedId=id;closeDialog();render();toast(db?"تم حفظ الرسالة ومشاركتها مع الجميع":"تم حفظ الرسالة على هذا الجهاز فقط")}
     catch(err){console.error("Rasayeli save error:",err);const code=err&&err.code?" ("+err.code+")":"";const detail=err&&err.message?" — "+err.message:"";$("formError").textContent="لم يتم الحفظ"+code+detail;}
