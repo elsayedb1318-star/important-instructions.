@@ -46,7 +46,7 @@
     try{
       if(db){const u={};arr.forEach(m=>{u[m.id+"/order"]=m.order});await db.ref("savedMessages").update(u)}
       else saveLocal();
-    }catch(e){console.error(e);toast("تعذر حفظ الترتيب. تحقق من صلاحيات قاعدة البيانات")}
+    }catch(e){console.error(e);toast("تعذر حفظ الترتيب"+(e&&e.code?" ("+e.code+")":"")+". تحقق من صلاحيات قاعدة البيانات")}
   }
   $("reorderBtn").addEventListener("click",()=>{reorderMode=!reorderMode;$("reorderBtn").classList.toggle("on",reorderMode);if(reorderMode&&$("searchInput").value.trim())toast("امسح البحث لتحريك الرسائل");render()});
   function selectMessage(id){selectedId=id;render()}
