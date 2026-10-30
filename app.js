@@ -1,8 +1,34 @@
 (() => {
   const $ = id => document.getElementById(id);
   const listEl = $("conversationList"), dialog = $("messageDialog");
-  let messages = [], reorderMode = false, selectedId = null, editingId = null, db = null, installPrompt = null, pendingImages = [];
-  const localKey = "rasayeli_local_messages_v1";
+  let messages = [], groups = [], currentGroup = "instructions", reorderMode = false, selectedId = null, editingId = null, db = null, installPrompt = null, pendingImages = [];
+  const localKey = "rasayeli_local_messages_v1", localGroupsKey = "rasayeli_local_groups_v1", groupKey = "rasayeli_current_group_v1", DEFAULT_GROUP = "instructions";
+  try { currentGroup = localStorage.getItem(groupKey) || DEFAULT_GROUP; } catch {}
+  const allGroups = () => [{id:DEFAULT_GROUP,name:DEFAULT_GROUP}, ...groups];
+  const groupName = id => (allGroups().find(g => g.id === id) || {name:"…"}).name;
+  const inGroup = m => (m.groupId || DEFAULT_GROUP) === currentGroup;
+  function loadLocalGroups(){try{return JSON.parse(localStorage.getItem(localGroupsKey)||"[]")}catch{return []}}
+  function renderGroupMenu(){
+    $("groupCurrent").textContent = groupName(currentGroup);
+    const box = $("groupList");
+    box.innerHTML = allGroups().map(g => `<button type="button" class="group-item ${g.id===currentGroup?"active":""}" data-gid="${escapeHtml(g.id)}">${escapeHtml(g.name)}</button>`).join("");
+    box.querySelectorAll("[data-gid]").forEach(b => b.addEventListener("click", () => setGroup(b.dataset.gid)));
+  }
+  function setGroup(id){
+    currentGroup = id; try { localStorage.setItem(groupKey, id); } catch {}
+    $("groupMenu").classList.add("hidden"); selectedId = null; showWelcome(); render();
+  }
+  async function addGroup(){
+    const raw = prompt("اسم الجروب الجديد"); if(raw === null) return;
+    const name = raw.trim().slice(0, 60); if(!name) return;
+    if(allGroups().some(g => g.name.toLowerCase() === name.toLowerCase())){ toast("اسم الجروب موجود بالفعل"); return; }
+    const g = {name, createdAt: Date.now()};
+    try{
+      if(db){ const ref = db.ref("savedGroups").push(); await ref.set(g); setGroup(ref.key); }
+      else { g.id = "local_" + Date.now() + "_" + Math.random().toString(36).slice(2,8); groups.push(g); localStorage.setItem(localGroupsKey, JSON.stringify(groups)); setGroup(g.id); }
+      toast("تمت إضافة الجروب");
+    }catch(e){ console.error(e); toast("تعذر إضافة الجروب" + (e && e.code ? " (" + e.code + ")" : "") + ". تحقق من صلاحيات قاعدة البيانات"); }
+  }
   const escapeHtml = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const dateText = v => { try { return new Date(v).toLocaleDateString("ar-EG",{year:"numeric",month:"short",day:"numeric"}); } catch { return ""; } };
   function toast(s){ const t=$("toast");t.textContent=s;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2600); }
@@ -14,10 +40,16 @@
   function saveLocal(){localStorage.setItem(localKey,JSON.stringify(messages))}
   function initFirebase(){
     const c=window.FIREBASE_CONFIG;
-    if(!c || !c.apiKey || !c.databaseURL || !window.firebase){messages=loadLocal();setStatus("حفظ محلي فقط");render();return}
+    if(!c || !c.apiKey || !c.databaseURL || !window.firebase){messages=loadLocal();groups=loadLocalGroups();setStatus("حفظ محلي فقط");render();return}
     try{
       if(!firebase.apps.length) firebase.initializeApp(c);
       db=firebase.database();
+      db.ref("savedGroups").on("value",snap=>{
+        const d=snap.val()||{};
+        groups=Object.entries(d).map(([id,v])=>({id,name:String((v&&v.name)||""),createdAt:(v&&v.createdAt)||0})).filter(g=>g.name).sort((a,b)=>a.createdAt-b.createdAt);
+        if(currentGroup!==DEFAULT_GROUP&&!groups.some(g=>g.id===currentGroup)){currentGroup=DEFAULT_GROUP;try{localStorage.setItem(groupKey,currentGroup)}catch{}}
+        render();
+      },err=>{console.error("Groups read error:",err);toast("تعذر تحميل الجروبات"+(err&&err.code?" ("+err.code+")":""))});
       setStatus("متصل — التعديل متاح للجميع",true);
       db.ref("savedMessages").on("value", snap=>{
         const data=snap.val()||{};
@@ -25,11 +57,12 @@
         setStatus("متصل — التعديل متاح للجميع",true);
         render();
       },err=>{setStatus("تعذر الاتصال بقاعدة البيانات");console.error("Firebase read error:",err);toast("خطأ اتصال: "+(err&&err.code?err.code:"راجع إعدادات Firebase"));});
-    }catch(e){console.error(e);messages=loadLocal();setStatus("إعداد قاعدة البيانات غير صحيح");render()}
+    }catch(e){console.error(e);messages=loadLocal();groups=loadLocalGroups();setStatus("إعداد قاعدة البيانات غير صحيح");render()}
   }
   function render(){
+    renderGroupMenu();
     const q=$("searchInput").value.trim().toLocaleLowerCase();
-    const filtered=messages.filter(m=>`${m.title||""}\n${m.content||""}`.toLocaleLowerCase().includes(q));
+    const filtered=messages.filter(m=>inGroup(m)&&`${m.title||""}\n${m.content||""}`.toLocaleLowerCase().includes(q));
     if(!filtered.length){listEl.innerHTML=`<div class="empty-list">${q?"لا توجد نتائج مطابقة.":"لا توجد رسائل بعد.<br>اضغط ＋ لإضافة أول رسالة."}</div>`}
     else listEl.innerHTML=filtered.map(m=>`<div class="conversation ${m.id===selectedId?"active":""}" data-id="${escapeHtml(m.id)}"><div class="avatar">✉</div><div class="conversation-info"><h3>${escapeHtml(m.title)}</h3><p>${escapeHtml((m.content||"").replace(/\s+/g," ").slice(0,90) || (readImages(m).length ? "📷 صورة مرفقة" : "بدون نص"))}</p></div><time>${escapeHtml(dateText(m.updatedAt||m.createdAt))}</time>${reorderMode&&!q?`<div class="move-btns"><button type="button" data-move="-1" aria-label="تحريك لأعلى">▲</button><button type="button" data-move="1" aria-label="تحريك لأسفل">▼</button></div>`:""}</div>`).join("");
     listEl.querySelectorAll(".conversation").forEach(el=>el.addEventListener("click",()=>selectMessage(el.dataset.id)));
@@ -38,16 +71,22 @@
     else if(selectedId) showMessage();
   }
   async function moveMessage(id,dir){
-    const i=messages.findIndex(m=>m.id===id),j=i+dir;
-    if(i<0||j<0||j>=messages.length)return;
-    const arr=messages.slice();[arr[i],arr[j]]=[arr[j],arr[i]];
-    arr.forEach((m,k)=>{m.order=k});
+    const vis=messages.filter(inGroup);
+    const i=vis.findIndex(m=>m.id===id),j=i+dir;
+    if(i<0||j<0||j>=vis.length)return;
+    const sw=vis.slice();[sw[i],sw[j]]=[sw[j],sw[i]];
+    const slots=[];messages.forEach((m,k)=>{if(inGroup(m))slots.push(k)});
+    const arr=messages.slice();slots.forEach((k,n)=>{arr[k]=sw[n]});
+    const changed=[];arr.forEach((m,k)=>{if(m.order!==k){m.order=k;changed.push(m)}});
     messages=arr;render();
     try{
-      if(db){const u={};arr.forEach(m=>{u[m.id+"/order"]=m.order});await db.ref("savedMessages").update(u)}
+      if(db){const u={};changed.forEach(m=>{u[m.id+"/order"]=m.order});await db.ref("savedMessages").update(u)}
       else saveLocal();
     }catch(e){console.error(e);toast("تعذر حفظ الترتيب"+(e&&e.code?" ("+e.code+")":"")+". تحقق من صلاحيات قاعدة البيانات")}
   }
+  $("groupBtn").addEventListener("click",e=>{e.stopPropagation();$("groupMenu").classList.toggle("hidden")});
+  $("groupAddBtn").addEventListener("click",addGroup);
+  document.addEventListener("click",e=>{if(!e.target.closest("#groupMenu"))$("groupMenu").classList.add("hidden")});
   $("reorderBtn").addEventListener("click",()=>{reorderMode=!reorderMode;$("reorderBtn").classList.toggle("on",reorderMode);if(reorderMode&&$("searchInput").value.trim())toast("امسح البحث لتحريك الرسائل");render()});
   function selectMessage(id){selectedId=id;render()}
   function showWelcome(){$("welcome").classList.remove("hidden");$("chatView").classList.add("hidden")}
@@ -98,6 +137,7 @@
     const id=editingId||(db?db.ref("savedMessages").push().key:"local_"+now+"_"+Math.random().toString(36).slice(2,8));
     const m={id,title,content,imagesJson:JSON.stringify(pendingImages),createdAt:old?.createdAt||now,updatedAt:now};
     const ord=old?old.order:newOrder();if(typeof ord==="number")m.order=ord;
+    const gid=old?old.groupId:currentGroup;if(gid)m.groupId=gid;
     if(m.imagesJson.length>1400000){$("formError").textContent="حجم الصور كبير. جرّب صورًا أقل أو أصغر حجمًا.";return}
     try{await persistMessage(m);selectedId=id;closeDialog();render();toast(db?"تم حفظ الرسالة ومشاركتها مع الجميع":"تم حفظ الرسالة على هذا الجهاز فقط")}
     catch(err){console.error("Rasayeli save error:",err);const code=err&&err.code?" ("+err.code+")":"";const detail=err&&err.message?" — "+err.message:"";$("formError").textContent="لم يتم الحفظ"+code+detail;}
