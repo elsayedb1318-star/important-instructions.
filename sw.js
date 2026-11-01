@@ -1,30 +1,33 @@
-const CACHE_NAME = "rasayeli-shell-v7";
+const CACHE_NAME = "rasayeli-shell-v8";
 const ASSETS = ["./", "./index.html", "./style.css", "./app.js", "./manifest.json"];
 const EXTRA = ["./firebase-config.js", "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js", "https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"];
-const ownMatch = req => caches.open(CACHE_NAME).then(c => c.match(req));
+const ownMatch = req => caches.open(CACHE_NAME).then(c => c.match(req, { ignoreSearch: true }));
+const store = (req, res) => { if(res && (res.ok || res.type === "opaque")){ const copy = res.clone(); caches.open(CACHE_NAME).then(c => c.put(req, copy)); } return res; };
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => Promise.all([
-    cache.addAll(ASSETS),
-    ...EXTRA.map(u => fetch(u, u.startsWith("http") ? { mode: "no-cors" } : undefined).then(r => (r.ok || r.type === "opaque") && cache.put(u, r)).catch(() => {}))
+    ...ASSETS.map(u => fetch(new Request(u, { cache: "reload" })).then(r => r.ok && cache.put(u, r)).catch(() => {})),
+    ...EXTRA.map(u => fetch(u, u.startsWith("http") ? { mode: "no-cors" } : { cache: "reload" }).then(r => (r.ok || r.type === "opaque") && cache.put(u, r)).catch(() => {}))
   ])).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", event => {
   event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith("rasayeli-shell-") && k !== CACHE_NAME).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener("fetch", event => {
-  if(event.request.method !== "GET") return;
-  const url = new URL(event.request.url);
+  const req = event.request;
+  if(req.method !== "GET") return;
+  const url = new URL(req.url);
   if(url.origin !== self.location.origin){
     if(url.hostname === "www.gstatic.com" && url.pathname.startsWith("/firebasejs/")){
-      event.respondWith(ownMatch(event.request).then(cached => cached || fetch(event.request).then(response => {
-        if(response.ok || response.type === "opaque") caches.open(CACHE_NAME).then(cache => cache.put(event.request, response.clone()));
-        return response;
-      })));
+      event.respondWith(ownMatch(req).then(cached => cached || fetch(req).then(res => store(req, res))));
     }
     return;
   }
-  event.respondWith(ownMatch(event.request).then(cached => cached || fetch(event.request).then(response => {
-    if(response.ok) caches.open(CACHE_NAME).then(cache => cache.put(event.request, response.clone()));
-    return response;
-  }).catch(() => ownMatch("./index.html"))));
+  event.respondWith(ownMatch(req).then(cached => {
+    const net = fetch(req).then(res => store(req, res)).catch(async () => {
+      if(cached) return cached;
+      if(req.mode === "navigate") return (await ownMatch("./index.html")) || (await ownMatch("./")) || Response.error();
+      return Response.error();
+    });
+    return cached || net;
+  }));
 });

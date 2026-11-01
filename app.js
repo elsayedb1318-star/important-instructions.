@@ -19,6 +19,7 @@
     $("groupMenu").classList.add("hidden"); selectedId = null; showWelcome(); render();
   }
   async function addGroup(){
+    if(blocked()){toast(OFFLINE_MSG);return}
     const raw = prompt("اسم الجروب الجديد"); if(raw === null) return;
     const name = raw.trim().slice(0, 60); if(!name) return;
     if(allGroups().some(g => g.name.toLowerCase() === name.toLowerCase())){ toast("اسم الجروب موجود بالفعل"); return; }
@@ -38,23 +39,49 @@
   function newOrder(){ const o = messages.filter(m => typeof m.order === "number").map(m => m.order); return o.length ? Math.min(...o) - 1 : -Date.now(); }
   function loadLocal(){try{return sortMsgs(JSON.parse(localStorage.getItem(localKey)||"[]"))}catch{return []}}
   function saveLocal(){localStorage.setItem(localKey,JSON.stringify(messages))}
+  let online = false, cacheOnly = false, serverMsgs = false, serverGroups = false;
+  const blocked = () => (db && !online) || cacheOnly;
+  const OFFLINE_MSG = "لا يوجد اتصال بالإنترنت — التعديل غير متاح";
+  function idbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open("rasayeli_cache",1);r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+  async function idbGet(k){const d=await idbOpen();return new Promise((res,rej)=>{const q=d.transaction("kv").objectStore("kv").get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
+  async function idbSet(k,v){const d=await idbOpen();return new Promise((res,rej)=>{const t=d.transaction("kv","readwrite");t.objectStore("kv").put(v,k);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}
+  const lsGet=k=>{try{const r=localStorage.getItem("rasayeli_cache_"+k);return r?JSON.parse(r):undefined}catch{return undefined}};
+  const cacheGet=k=>idbGet(k).then(v=>v!==undefined?v:lsGet(k)).catch(()=>lsGet(k));
+  const cacheSet=(k,v)=>idbSet(k,v).catch(e=>{console.warn("idb save failed",e);try{localStorage.setItem("rasayeli_cache_"+k,JSON.stringify(v))}catch{}});
+  function setConnStatus(){
+    if(online)setStatus("متصل — التعديل متاح للجميع",true);
+    else setStatus(messages.length?"غير متصل — عرض النسخة المحفوظة ("+messages.length+")":"غير متصل — لا توجد نسخة محفوظة، افتح التطبيق مرة بالإنترنت");
+  }
+  function loadCache(){
+    return Promise.all([cacheGet("messages"),cacheGet("groups")]).then(([cm,cg])=>{
+      if(!serverMsgs&&Array.isArray(cm))messages=sortMsgs(cm);
+      if(!serverGroups&&Array.isArray(cg))groups=cg;
+      render();
+      if(!online&&!serverMsgs)setConnStatus();
+    }).catch(e=>console.warn("cache load failed",e));
+  }
   function initFirebase(){
     const c=window.FIREBASE_CONFIG;
+    if(c && c.apiKey && c.databaseURL && !window.firebase){cacheOnly=true;setStatus("غير متصل — عرض النسخة المحفوظة");loadCache();return}
     if(!c || !c.apiKey || !c.databaseURL || !window.firebase){messages=loadLocal();groups=loadLocalGroups();setStatus("حفظ محلي فقط");render();return}
     try{
       if(!firebase.apps.length) firebase.initializeApp(c);
       db=firebase.database();
+      setStatus("جارٍ الاتصال…");
+      loadCache();
+      db.ref(".info/connected").on("value",s=>{online=s.val()===true;setConnStatus()});
       db.ref("savedGroups").on("value",snap=>{
         const d=snap.val()||{};
         groups=Object.entries(d).map(([id,v])=>({id,name:String((v&&v.name)||""),createdAt:(v&&v.createdAt)||0})).filter(g=>g.name).sort((a,b)=>a.createdAt-b.createdAt);
         if(currentGroup!==DEFAULT_GROUP&&!groups.some(g=>g.id===currentGroup)){currentGroup=DEFAULT_GROUP;try{localStorage.setItem(groupKey,currentGroup)}catch{}}
+        serverGroups=true;cacheSet("groups",groups);
         render();
       },err=>{console.error("Groups read error:",err);toast("تعذر تحميل الجروبات"+(err&&err.code?" ("+err.code+")":""))});
-      setStatus("متصل — التعديل متاح للجميع",true);
       db.ref("savedMessages").on("value", snap=>{
         const data=snap.val()||{};
         messages=sortMsgs(Object.entries(data).map(([id,v])=>({...v,id})));
-        setStatus("متصل — التعديل متاح للجميع",true);
+        serverMsgs=true;cacheSet("messages",messages);
+        setConnStatus();
         render();
       },err=>{setStatus("تعذر الاتصال بقاعدة البيانات");console.error("Firebase read error:",err);toast("خطأ اتصال: "+(err&&err.code?err.code:"راجع إعدادات Firebase"));});
     }catch(e){console.error(e);messages=loadLocal();groups=loadLocalGroups();setStatus("إعداد قاعدة البيانات غير صحيح");render()}
@@ -71,6 +98,7 @@
     else if(selectedId) showMessage();
   }
   async function moveMessage(id,dir){
+    if(blocked()){toast(OFFLINE_MSG);return}
     const vis=messages.filter(inGroup);
     const i=vis.findIndex(m=>m.id===id),j=i+dir;
     if(i<0||j<0||j>=vis.length)return;
@@ -109,6 +137,7 @@
   function openNew(){editingId=null;pendingImages=[];$("dialogHeading").textContent="إضافة رسالة جديدة";$("messageTitle").value="";$("messageContent").value="";$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()}
   function closeDialog(){dialog.close()}
   async function persistMessage(m){
+    if(blocked())throw new Error(OFFLINE_MSG);
     if(db){
       const { id: _localId, ...record } = m;
       await db.ref("savedMessages/"+m.id).set(record)
@@ -145,13 +174,17 @@
   $("copyBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;try{await navigator.clipboard.writeText(m.content||"");toast("تم نسخ النص")}catch{toast("تعذر النسخ؛ حدد النص وانسخه يدويًا")}});
   $("shareBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;try{if(navigator.share)await navigator.share({title:m.title,text:m.content});else{await navigator.clipboard.writeText(m.title+"\n\n"+m.content);toast("تم نسخ الرسالة للمشاركة")}}catch{}});
   $("editBtn").addEventListener("click",()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;editingId=m.id;pendingImages=readImages(m).slice();$("dialogHeading").textContent="تعديل الرسالة";$("messageTitle").value=m.title||"";$("messageContent").value=m.content||"";$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()});
-  $("deleteBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;if(!confirm("هل تريد حذف هذه الرسالة من القائمة المشتركة؟"))return;try{if(db)await db.ref("savedMessages/"+m.id).remove();else{messages=messages.filter(x=>x.id!==m.id);saveLocal()}selectedId=null;render();showWelcome();toast("تم حذف الرسالة")}catch(e){toast("تعذر الحذف. تحقق من صلاحيات قاعدة البيانات")}});
+  $("deleteBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;if(blocked()){toast(OFFLINE_MSG);return}if(!confirm("هل تريد حذف هذه الرسالة من القائمة المشتركة؟"))return;try{if(db)await db.ref("savedMessages/"+m.id).remove();else{messages=messages.filter(x=>x.id!==m.id);saveLocal()}selectedId=null;render();showWelcome();toast("تم حذف الرسالة")}catch(e){toast("تعذر الحذف. تحقق من صلاحيات قاعدة البيانات")}});
   // استقبال نصوص من قائمة مشاركة Android/Chrome عند تثبيت التطبيق.
   const params=new URLSearchParams(location.search);
   const sharedText=params.get("text")||params.get("title")||"";
   if(sharedText){setTimeout(()=>{openNew();$("messageContent").value=sharedText;history.replaceState({}, "", location.pathname)},350)}
   window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;$("installBtn").classList.remove("hidden")});
   $("installBtn").addEventListener("click",async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$("installBtn").classList.add("hidden")});
-  if("serviceWorker" in navigator && location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(console.warn);
+  if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+    const hadController=!!navigator.serviceWorker.controller;let reloaded=false;
+    navigator.serviceWorker.addEventListener("controllerchange",()=>{if(hadController&&!reloaded){reloaded=true;location.reload()}});
+    navigator.serviceWorker.register("sw.js").catch(console.warn);
+  }
   initFirebase();
 })();
