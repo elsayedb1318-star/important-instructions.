@@ -1,4 +1,4 @@
-const CACHE_NAME = "rasayeli-shell-v8";
+const CACHE_NAME = "rasayeli-shell-v9";
 const ASSETS = ["./", "./index.html", "./style.css", "./app.js", "./manifest.json"];
 const EXTRA = ["./firebase-config.js", "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js", "https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"];
 const ownMatch = req => caches.open(CACHE_NAME).then(c => c.match(req, { ignoreSearch: true }));

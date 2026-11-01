@@ -48,6 +48,51 @@
   const lsGet=k=>{try{const r=localStorage.getItem("rasayeli_cache_"+k);return r?JSON.parse(r):undefined}catch{return undefined}};
   const cacheGet=k=>idbGet(k).then(v=>v!==undefined?v:lsGet(k)).catch(()=>lsGet(k));
   const cacheSet=(k,v)=>idbSet(k,v).catch(e=>{console.warn("idb save failed",e);try{localStorage.setItem("rasayeli_cache_"+k,JSON.stringify(v))}catch{}});
+  const makePreview = t => String(t || "").replace(/\s+/g, " ").trim().slice(0, 90);
+  const previewOf = m => typeof m.preview === "string" ? m.preview : makePreview(m.content);
+  const hasImgs = m => typeof m.hasImages === "boolean" ? m.hasImages : readImages(m).length > 0;
+  const bodyCache = new Map(), inflight = new Map();
+  function peekBody(m){
+    if(typeof m.content === "string" || typeof m.imagesJson === "string") return {content: m.content || "", imagesJson: m.imagesJson || "[]"};
+    const mem = bodyCache.get(m.id); return mem && mem.updatedAt === m.updatedAt ? mem : null;
+  }
+  async function loadBody(m){
+    const hit = peekBody(m); if(hit) return hit;
+    const c = await cacheGet("body:" + m.id);
+    if(c && c.updatedAt === m.updatedAt){ bodyCache.set(m.id, c); return c; }
+    if(db && online){
+      try{
+        const v = (await db.ref("savedBodies/" + m.id).once("value")).val() || {};
+        const b = {updatedAt: m.updatedAt, content: v.content || "", imagesJson: v.imagesJson || "[]"};
+        bodyCache.set(m.id, b); cacheSet("body:" + m.id, b); return b;
+      }catch(e){ console.warn("body load failed", e); }
+    }
+    return c ? {...c, stale: true} : null;
+  }
+  function getBody(m){
+    const k = m.id + "|" + m.updatedAt; if(inflight.has(k)) return inflight.get(k);
+    const p = loadBody(m).finally(() => inflight.delete(k)); inflight.set(k, p); return p;
+  }
+  let migrating = false, migrationWarned = false;
+  async function migrateLegacy(items){
+    if(migrating || !db) return; migrating = true;
+    try{
+      for(let i = 0; i < items.length; i += 3){
+        const u = {};
+        items.slice(i, i + 3).forEach(v => {
+          u["savedBodies/" + v.id] = {content: v.content, imagesJson: v.imagesJson};
+          u["savedMessages/" + v.id + "/preview"] = makePreview(v.content);
+          u["savedMessages/" + v.id + "/hasImages"] = readImages({imagesJson: v.imagesJson}).length > 0;
+          u["savedMessages/" + v.id + "/content"] = null;
+          u["savedMessages/" + v.id + "/imagesJson"] = null;
+        });
+        await db.ref().update(u);
+      }
+    }catch(e){
+      console.warn("migration failed", e);
+      if(!migrationWarned){ migrationWarned = true; toast("تعذر تحديث بنية البيانات" + (e && e.code ? " (" + e.code + ")" : "") + " — حدّث قواعد Firebase"); }
+    }finally{ migrating = false; }
+  }
   function setConnStatus(){
     if(online)setStatus("متصل — التعديل متاح للجميع",true);
     else setStatus(messages.length?"غير متصل — عرض النسخة المحفوظة ("+messages.length+")":"غير متصل — لا توجد نسخة محفوظة، افتح التطبيق مرة بالإنترنت");
@@ -79,7 +124,18 @@
       },err=>{console.error("Groups read error:",err);toast("تعذر تحميل الجروبات"+(err&&err.code?" ("+err.code+")":""))});
       db.ref("savedMessages").on("value", snap=>{
         const data=snap.val()||{};
-        messages=sortMsgs(Object.entries(data).map(([id,v])=>({...v,id})));
+        const legacy=[];
+        messages=sortMsgs(Object.entries(data).map(([id,v])=>{
+          const {content,imagesJson,...meta}=v||{};
+          if(typeof content==="string"||typeof imagesJson==="string"){
+            legacy.push({id,content:content||"",imagesJson:imagesJson||"[]",updatedAt:meta.updatedAt});
+            if(typeof meta.preview!=="string")meta.preview=makePreview(content);
+            if(typeof meta.hasImages!=="boolean")meta.hasImages=readImages({imagesJson}).length>0;
+          }
+          return {...meta,id};
+        }));
+        legacy.forEach(l=>{const b={updatedAt:l.updatedAt,content:l.content,imagesJson:l.imagesJson};bodyCache.set(l.id,b);cacheSet("body:"+l.id,b)});
+        if(legacy.length)migrateLegacy(legacy);
         serverMsgs=true;cacheSet("messages",messages);
         setConnStatus();
         render();
@@ -89,9 +145,9 @@
   function render(){
     renderGroupMenu();
     const q=$("searchInput").value.trim().toLocaleLowerCase();
-    const filtered=messages.filter(m=>inGroup(m)&&`${m.title||""}\n${m.content||""}`.toLocaleLowerCase().includes(q));
+    const filtered=messages.filter(m=>inGroup(m)&&`${m.title||""}\n${previewOf(m)}`.toLocaleLowerCase().includes(q));
     if(!filtered.length){listEl.innerHTML=`<div class="empty-list">${q?"لا توجد نتائج مطابقة.":"لا توجد رسائل بعد.<br>اضغط ＋ لإضافة أول رسالة."}</div>`}
-    else listEl.innerHTML=filtered.map(m=>`<div class="conversation ${m.id===selectedId?"active":""}" data-id="${escapeHtml(m.id)}"><div class="avatar">✉</div><div class="conversation-info"><h3>${escapeHtml(m.title)}</h3><p>${escapeHtml((m.content||"").replace(/\s+/g," ").slice(0,90) || (readImages(m).length ? "📷 صورة مرفقة" : "بدون نص"))}</p></div><time>${escapeHtml(dateText(m.updatedAt||m.createdAt))}</time>${reorderMode&&!q?`<div class="move-btns"><button type="button" data-move="-1" aria-label="تحريك لأعلى">▲</button><button type="button" data-move="1" aria-label="تحريك لأسفل">▼</button></div>`:""}</div>`).join("");
+    else listEl.innerHTML=filtered.map(m=>`<div class="conversation ${m.id===selectedId?"active":""}" data-id="${escapeHtml(m.id)}"><div class="avatar">✉</div><div class="conversation-info"><h3>${escapeHtml(m.title)}</h3><p>${escapeHtml(previewOf(m) || (hasImgs(m) ? "📷 صورة مرفقة" : "بدون نص"))}</p></div><time>${escapeHtml(dateText(m.updatedAt||m.createdAt))}</time>${reorderMode&&!q?`<div class="move-btns"><button type="button" data-move="-1" aria-label="تحريك لأعلى">▲</button><button type="button" data-move="1" aria-label="تحريك لأسفل">▼</button></div>`:""}</div>`).join("");
     listEl.querySelectorAll(".conversation").forEach(el=>el.addEventListener("click",()=>selectMessage(el.dataset.id)));
     listEl.querySelectorAll("[data-move]").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();moveMessage(b.closest(".conversation").dataset.id,Number(b.dataset.move))}));
     if(selectedId && !messages.some(m=>m.id===selectedId)){selectedId=null;showWelcome()}
@@ -126,21 +182,33 @@
     box.innerHTML=pendingImages.map((src,i)=>`<div class="preview-item"><img src="${src}" alt="صورة مرفقة"><button type="button" data-remove-image="${i}" aria-label="حذف الصورة">×</button></div>`).join("");
     box.querySelectorAll("[data-remove-image]").forEach(b=>b.addEventListener("click",()=>{pendingImages.splice(Number(b.dataset.removeImage),1);renderImagePreview()}));
   }
+  function paintBody(b){
+    const imgs=readImages(b);
+    $("messageBubble").innerHTML=`<div class="message-text">${escapeHtml(b.content||"").replace(/\n/g,"<br>")}</div>${imgs.length?`<div class="message-images">${imgs.map(src=>`<img src="${src}" alt="صورة داخل الرسالة" loading="lazy">`).join("")}</div>`:""}${b.stale?'<div class="message-text" style="opacity:.6;font-size:12px">نسخة محفوظة قد لا تكون الأحدث</div>':""}`;
+  }
   function showMessage(){
     const m=messages.find(x=>x.id===selectedId);if(!m){showWelcome();return}
     $("welcome").classList.add("hidden");$("chatView").classList.remove("hidden");
     $("viewTitle").textContent=m.title;$("viewDate").textContent="تاريخ الحفظ: "+dateText(m.createdAt);
-    const imgs=readImages(m);
-    $("messageBubble").innerHTML=`<div class="message-text">${escapeHtml(m.content||"").replace(/\n/g,"<br>")}</div>${imgs.length?`<div class="message-images">${imgs.map(src=>`<img src="${src}" alt="صورة داخل الرسالة" loading="lazy">`).join("")}</div>`:""}`;
     $("copyBtn").textContent="نسخ النص";
+    const hit=peekBody(m);if(hit){paintBody(hit);return}
+    $("messageBubble").innerHTML='<div class="message-text">جارٍ تحميل المحتوى…</div>';
+    const id=m.id;
+    getBody(m).then(b=>{
+      if(selectedId!==id)return;
+      if(b)paintBody(b);
+      else $("messageBubble").innerHTML='<div class="message-text">المحتوى غير متاح بدون إنترنت. افتح هذه الرسالة مرة واحدة أثناء الاتصال ليتم تخزينها.</div>';
+    });
   }
   function openNew(){editingId=null;pendingImages=[];$("dialogHeading").textContent="إضافة رسالة جديدة";$("messageTitle").value="";$("messageContent").value="";$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()}
   function closeDialog(){dialog.close()}
   async function persistMessage(m){
     if(blocked())throw new Error(OFFLINE_MSG);
     if(db){
-      const { id: _localId, ...record } = m;
-      await db.ref("savedMessages/"+m.id).set(record)
+      const { id, content, imagesJson, ...meta } = m;
+      meta.preview = makePreview(content); meta.hasImages = readImages({imagesJson}).length > 0;
+      await db.ref().update({["savedMessages/"+id]: meta, ["savedBodies/"+id]: {content, imagesJson}});
+      const b = {updatedAt: m.updatedAt, content, imagesJson}; bodyCache.set(id, b); cacheSet("body:"+id, b);
     }
     else {const idx=messages.findIndex(x=>x.id===m.id);if(idx>=0)messages[idx]=m;else messages.unshift(m);sortMsgs(messages);saveLocal();render()}
   }
@@ -171,10 +239,10 @@
     try{await persistMessage(m);selectedId=id;closeDialog();render();toast(db?"تم حفظ الرسالة ومشاركتها مع الجميع":"تم حفظ الرسالة على هذا الجهاز فقط")}
     catch(err){console.error("Rasayeli save error:",err);const code=err&&err.code?" ("+err.code+")":"";const detail=err&&err.message?" — "+err.message:"";$("formError").textContent="لم يتم الحفظ"+code+detail;}
   });
-  $("copyBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;try{await navigator.clipboard.writeText(m.content||"");toast("تم نسخ النص")}catch{toast("تعذر النسخ؛ حدد النص وانسخه يدويًا")}});
-  $("shareBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;try{if(navigator.share)await navigator.share({title:m.title,text:m.content});else{await navigator.clipboard.writeText(m.title+"\n\n"+m.content);toast("تم نسخ الرسالة للمشاركة")}}catch{}});
-  $("editBtn").addEventListener("click",()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;editingId=m.id;pendingImages=readImages(m).slice();$("dialogHeading").textContent="تعديل الرسالة";$("messageTitle").value=m.title||"";$("messageContent").value=m.content||"";$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()});
-  $("deleteBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;if(blocked()){toast(OFFLINE_MSG);return}if(!confirm("هل تريد حذف هذه الرسالة من القائمة المشتركة؟"))return;try{if(db)await db.ref("savedMessages/"+m.id).remove();else{messages=messages.filter(x=>x.id!==m.id);saveLocal()}selectedId=null;render();showWelcome();toast("تم حذف الرسالة")}catch(e){toast("تعذر الحذف. تحقق من صلاحيات قاعدة البيانات")}});
+  $("copyBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح");return}try{await navigator.clipboard.writeText(b.content||"");toast("تم نسخ النص")}catch{toast("تعذر النسخ؛ حدد النص وانسخه يدويًا")}});
+  $("shareBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح");return}try{if(navigator.share)await navigator.share({title:m.title,text:b.content});else{await navigator.clipboard.writeText(m.title+"\n\n"+b.content);toast("تم نسخ الرسالة للمشاركة")}}catch{}});
+  $("editBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح بدون إنترنت");return}editingId=m.id;pendingImages=readImages(b).slice();$("dialogHeading").textContent="تعديل الرسالة";$("messageTitle").value=m.title||"";$("messageContent").value=b.content||"";$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()});
+  $("deleteBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;if(blocked()){toast(OFFLINE_MSG);return}if(!confirm("هل تريد حذف هذه الرسالة من القائمة المشتركة؟"))return;try{if(db)await db.ref().update({["savedMessages/"+m.id]:null,["savedBodies/"+m.id]:null});else{messages=messages.filter(x=>x.id!==m.id);saveLocal()}selectedId=null;render();showWelcome();toast("تم حذف الرسالة")}catch(e){toast("تعذر الحذف. تحقق من صلاحيات قاعدة البيانات")}});
   // استقبال نصوص من قائمة مشاركة Android/Chrome عند تثبيت التطبيق.
   const params=new URLSearchParams(location.search);
   const sharedText=params.get("text")||params.get("title")||"";
