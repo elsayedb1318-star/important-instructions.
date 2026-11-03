@@ -49,8 +49,9 @@
   <dialog id="messageDialog">
     <form id="messageForm" method="dialog">
       <div class="dialog-head"><h2 id="dialogHeading">إضافة رسالة</h2><button type="button" id="closeDialog" class="close-btn">×</button></div>
-      <label>عنوان الرسالة<input id="messageTitle" maxlength="120" required placeholder="مثال: تعليمات مهمة"></label>
-      <label>محتوى الرسالة<textarea id="messageContent" rows="8" placeholder="اكتب المحتوى هنا... يمكنك إضافة صور أيضًا"></textarea></label>
+      <label>عنوان الرسالة<input id="messageTitle" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" maxlength="120" required placeholder="مثال: تعليمات مهمة"></label>
+      <label>محتوى الرسالة<textarea id="messageContent" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" rows="8" placeholder="اكتب المحتوى هنا... يمكنك إضافة صور أيضًا"></textarea></label>
+      <div id="textTools" class="text-tools"><button type="button" data-t="cut">قص</button><button type="button" data-t="copy">نسخ</button><button type="button" data-t="all">اختيار الكل</button><button type="button" data-t="del">حذف</button></div>
       <label class="image-picker-label">إضافة صور (يمكن اختيار أكثر من صورة)<input id="messageImages" type="file" accept="image/*" multiple></label>
       <div id="imagePreview" class="image-preview"></div>
       <div class="dialog-note">الصور يتم تصغير حجمها تلقائيًا لتسهيل حفظها ومشاركتها مع جميع المستخدمين. الحد الأقصى 4 صور لكل رسالة.</div>

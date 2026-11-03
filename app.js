@@ -249,6 +249,36 @@
   if(sharedText){setTimeout(()=>{openNew();$("messageContent").value=sharedText;history.replaceState({}, "", location.pathname)},350)}
   window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;$("installBtn").classList.remove("hidden")});
   $("installBtn").addEventListener("click",async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$("installBtn").classList.add("hidden")});
+  (function textTools(){
+    const ta=$("messageContent"),title=$("messageTitle"),bar=$("textTools");
+    const refresh=()=>{const has=ta.selectionStart!==ta.selectionEnd;bar.querySelectorAll('[data-t="cut"],[data-t="copy"],[data-t="del"]').forEach(b=>{b.disabled=!has})};
+    ["focus","input","select","keyup","touchend"].forEach(ev=>ta.addEventListener(ev,refresh));
+    document.addEventListener("selectionchange",()=>{if(document.activeElement===ta)refresh()});
+    setInterval(()=>{if(dialog.open)refresh()},250);
+    bar.querySelectorAll("button").forEach(b=>{
+      b.addEventListener("pointerdown",e=>e.preventDefault());
+      b.addEventListener("mousedown",e=>e.preventDefault());
+      b.addEventListener("click",async()=>{
+        const t=b.dataset.t;
+        if(t==="all"){ta.focus();ta.setSelectionRange(0,ta.value.length);refresh();return}
+        const s=ta.selectionStart,e=ta.selectionEnd;if(s===e)return;
+        const text=ta.value.slice(s,e);
+        if(t==="copy"||t==="cut"){try{await navigator.clipboard.writeText(text)}catch{ta.focus();ta.setSelectionRange(s,e);try{document.execCommand("copy")}catch{}}}
+        if(t==="cut"||t==="del"){ta.setRangeText("",s,e,"end");ta.focus()}
+        refresh();
+      });
+    });
+    const curH=()=>(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+    let fullH=Math.max(window.innerHeight,curH());
+    window.addEventListener("resize",()=>{fullH=Math.max(fullH,curH())});
+    window.addEventListener("orientationchange",()=>setTimeout(()=>{fullH=curH()},400));
+    [ta,title].forEach(el=>el.addEventListener("click",()=>{
+      if(document.activeElement===el&&curH()>=fullH-80){
+        const s=el.selectionStart,e=el.selectionEnd;el.blur();
+        setTimeout(()=>{el.focus();try{el.setSelectionRange(s,e)}catch{}},0);
+      }
+    }));
+  })();
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
     const hadController=!!navigator.serviceWorker.controller;let reloaded=false;
     navigator.serviceWorker.addEventListener("controllerchange",()=>{if(hadController&&!reloaded){reloaded=true;location.reload()}});
