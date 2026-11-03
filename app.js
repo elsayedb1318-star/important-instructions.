@@ -207,7 +207,8 @@
     if(db){
       const { id, content, imagesJson, ...meta } = m;
       meta.preview = makePreview(content); meta.hasImages = readImages({imagesJson}).length > 0;
-      await db.ref().update({["savedMessages/"+id]: meta, ["savedBodies/"+id]: {content, imagesJson}});
+      const isEdit = messages.some(x => x.id === id);
+      await db.ref().update({["savedMessages/"+id]: meta, ["savedBodies/"+id]: {content, imagesJson}, notice: {id, title: m.title, content: String(content || "").slice(0, 2000), action: isEdit ? "edit" : "add", ts: Date.now()}});
       const b = {updatedAt: m.updatedAt, content, imagesJson}; bodyCache.set(id, b); cacheSet("body:"+id, b);
     }
     else {const idx=messages.findIndex(x=>x.id===m.id);if(idx>=0)messages[idx]=m;else messages.unshift(m);sortMsgs(messages);saveLocal();render()}
