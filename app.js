@@ -101,6 +101,8 @@
     return Promise.all([cacheGet("messages"),cacheGet("groups")]).then(([cm,cg])=>{
       if(!serverMsgs&&Array.isArray(cm))messages=sortMsgs(cm);
       if(!serverGroups&&Array.isArray(cg))groups=cg;
+      const requestedMessageId = new URLSearchParams(location.search).get("messageId");
+      if(requestedMessageId && messages.some(m => m.id === requestedMessageId)) selectedId = requestedMessageId;
       render();
       if(!online&&!serverMsgs)setConnStatus();
     }).catch(e=>console.warn("cache load failed",e));
@@ -137,6 +139,8 @@
         legacy.forEach(l=>{const b={updatedAt:l.updatedAt,content:l.content,imagesJson:l.imagesJson};bodyCache.set(l.id,b);cacheSet("body:"+l.id,b)});
         if(legacy.length)migrateLegacy(legacy);
         serverMsgs=true;cacheSet("messages",messages);
+        const requestedMessageId = new URLSearchParams(location.search).get("messageId");
+        if(requestedMessageId && messages.some(m => m.id === requestedMessageId)) selectedId = requestedMessageId;
         setConnStatus();
         render();
       },err=>{setStatus("تعذر الاتصال بقاعدة البيانات");console.error("Firebase read error:",err);toast("خطأ اتصال: "+(err&&err.code?err.code:"راجع إعدادات Firebase"));});
@@ -208,7 +212,17 @@
       const { id, content, imagesJson, ...meta } = m;
       meta.preview = makePreview(content); meta.hasImages = readImages({imagesJson}).length > 0;
       const isEdit = messages.some(x => x.id === id);
-      await db.ref().update({["savedMessages/"+id]: meta, ["savedBodies/"+id]: {content, imagesJson}, notice: {id, title: m.title, content: String(content || "").slice(0, 2000), action: isEdit ? "edit" : "add", ts: Date.now()}});
+      const noticeTs = Date.now();
+      const noticeRef = db.ref("jigNotifications").push();
+      const updates = {
+        ["savedMessages/"+id]: meta,
+        ["savedBodies/"+id]: {content, imagesJson},
+        // الإبقاء على notice القديم للتوافق مع أي استخدام سابق.
+        notice: {id, title: m.title, content: String(content || "").slice(0, 2000), action: isEdit ? "edit" : "add", ts: noticeTs},
+        // سجل مستقل لكل إضافة/تعديل حتى لا تضيع الإشعارات المتتالية.
+        ["jigNotifications/"+noticeRef.key]: {id, title: m.title, action: isEdit ? "edit" : "add", ts: noticeTs}
+      };
+      await db.ref().update(updates);
       const b = {updatedAt: m.updatedAt, content, imagesJson}; bodyCache.set(id, b); cacheSet("body:"+id, b);
     }
     else {const idx=messages.findIndex(x=>x.id===m.id);if(idx>=0)messages[idx]=m;else messages.unshift(m);sortMsgs(messages);saveLocal();render()}
