@@ -18,7 +18,7 @@
 
   <main class="app-shell">
     <aside class="sidebar">
-      <div class="sidebar-heading"><div class="group-wrap"><button id="groupBtn" type="button" class="group-btn">GROUP ▾</button><small id="groupCurrent" class="group-current">instructions</small></div><div class="heading-btns"><button id="reorderBtn" class="round-btn" title="ترتيب الرسائل">⇅</button><button id="newBtn" class="round-btn" title="إضافة رسالة جديدة">＋</button></div></div>
+      <div class="sidebar-heading"><div class="group-wrap"><button id="groupBtn" type="button" class="group-btn" aria-expanded="false"><span class="group-btn-label">GROUP</span><span class="group-btn-arrow" aria-hidden="true">⌄</span></button><small id="groupCurrent" class="group-current">instructions</small></div><div class="heading-btns"><button id="reorderBtn" class="round-btn" title="ترتيب الرسائل">⇅</button><button id="newBtn" class="round-btn" title="إضافة رسالة جديدة">＋</button></div></div>
       <div id="groupMenu" class="group-menu hidden"><div id="groupList"></div><button type="button" id="groupAddBtn" class="group-item group-add">＋ ADD</button></div>
       <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="ابحث في العناوين..."></label>
       <div id="conversationList" class="conversation-list">
@@ -33,6 +33,7 @@
         <h2>رسائلك المهمة</h2>
         <p>اختر محادثة من القائمة، أو أضف رسالة جديدة واحفظها للرجوع إليها لاحقًا.</p>
         <button id="welcomeNewBtn" class="primary-btn">＋ إضافة رسالة</button>
+        <div class="welcome-groups-wrap"><h3>الجروبات</h3><div id="welcomeGroups" class="welcome-groups"></div></div>
       </div>
 
       <div id="chatView" class="chat-view hidden">

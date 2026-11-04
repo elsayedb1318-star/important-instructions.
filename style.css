@@ -2,3 +2,24 @@
 .heading-btns{display:flex;gap:8px}#reorderBtn{font-size:20px}.round-btn.on{background:var(--green);box-shadow:0 0 0 3px #128c7e55}.move-btns{display:flex;flex-direction:column;gap:4px;align-self:center}.move-btns button{border:1px solid #d8e0dc;background:#fff;border-radius:6px;width:30px;height:28px;cursor:pointer;color:var(--green);font-size:12px;padding:0}.move-btns button:active{background:#e1efeb}@media(max-width:760px){.heading-btns{gap:4px}#reorderBtn{font-size:16px}.move-btns button{width:26px;height:26px}}
 .sidebar{position:relative}.sidebar-heading{flex-wrap:wrap;gap:8px}.group-wrap{display:flex;flex-direction:column;align-items:flex-start;min-width:0}.group-btn{border:0;background:none;padding:0;font:inherit;font-size:19px;font-weight:700;color:inherit;cursor:pointer}.group-current{display:block;max-width:150px;font-size:11px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.group-menu{position:absolute;top:64px;right:10px;left:10px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px #0003;z-index:20;max-height:60vh;overflow:auto}.group-item{display:block;width:100%;text-align:start;border:0;border-bottom:1px solid #f0f2f1;background:#fff;padding:12px 14px;font:inherit;font-size:14px;cursor:pointer;overflow-wrap:anywhere}.group-item:hover{background:#f6faf9}.group-item.active{background:#eaf5f2;font-weight:700}.group-add{color:var(--green2);font-weight:700;border-bottom:0}@media(max-width:760px){.group-btn{font-size:15px}.group-current{max-width:70px}.group-menu{right:6px;left:6px;top:58px}}
 .text-tools{display:flex;gap:6px;margin:6px 0 12px}.text-tools button{flex:1;padding:8px 4px;border:1px solid #d8e0dc;background:#fff;border-radius:8px;font:inherit;font-size:13px;color:var(--green);cursor:pointer}.text-tools button:disabled{opacity:.4}
+
+/* Group selector emphasis and welcome group directory */
+.group-wrap{align-items:flex-start;gap:5px}
+.group-btn{display:inline-flex;align-items:center;gap:10px;padding:9px 14px;border-radius:12px;background:linear-gradient(135deg,#075e54,#128c7e);color:#fff;box-shadow:0 4px 12px #075e5433;border:1px solid #ffffff35;transition:transform .15s,box-shadow .15s}
+.group-btn:hover{transform:translateY(-1px);box-shadow:0 7px 16px #075e5440}
+.group-btn-label{font-size:15px;letter-spacing:.6px}
+.group-btn-arrow{display:grid;place-items:center;width:23px;height:23px;border-radius:50%;background:#ffffff25;font-size:21px;line-height:15px;transition:transform .2s}
+.group-btn[aria-expanded="true"] .group-btn-arrow{transform:rotate(180deg)}
+.group-current{max-width:180px;font-size:11px;font-weight:600;color:#526a63;margin-inline-start:4px}
+.group-menu{top:78px;border:1px solid #cfe3dc;border-radius:14px;padding:5px}
+.group-item.active{background:#e2f4ee;color:#075e54;border-inline-start:4px solid #128c7e}
+.welcome{overflow:auto;justify-content:flex-start;padding-top:clamp(18px,5vh,55px)}
+.welcome-groups-wrap{width:min(760px,100%);margin:24px auto 0;text-align:start}
+.welcome-groups-wrap h3{font-size:16px;color:#435b54;margin:0 0 12px}
+.welcome-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;width:100%}
+.welcome-group{display:flex;align-items:center;gap:10px;min-height:58px;padding:11px 13px;border:1px solid #d6e6df;border-radius:12px;background:#fff;color:#263c35;box-shadow:0 3px 10px #203c3010;font:inherit;font-size:14px;font-weight:700;text-align:start;cursor:pointer;transition:transform .15s,border-color .15s,background .15s}
+.welcome-group:hover{transform:translateY(-2px);border-color:#128c7e;background:#f5fbf8}
+.welcome-group.active{border-color:#128c7e;background:#e7f5f0;color:#075e54}
+.welcome-group-icon{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;border-radius:10px;background:#dff1eb;color:#087568;font-size:20px}
+.welcome-group-arrow{margin-inline-start:auto;color:#128c7e;font-size:20px}
+@media(max-width:760px){.group-btn{padding:7px 9px;gap:6px}.group-btn-label{font-size:12px}.group-btn-arrow{width:20px;height:20px;font-size:18px}.group-current{max-width:90px}.group-menu{top:66px}.welcome-groups-wrap{margin-top:14px}.welcome-groups{grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:7px}.welcome-group{min-height:50px;padding:8px;font-size:12px}}

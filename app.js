@@ -4,6 +4,10 @@
   let messages = [], groups = [], currentGroup = "instructions", reorderMode = false, selectedId = null, editingId = null, db = null, installPrompt = null, pendingImages = [];
   const localKey = "rasayeli_local_messages_v1", localGroupsKey = "rasayeli_local_groups_v1", groupKey = "rasayeli_current_group_v1", DEFAULT_GROUP = "instructions";
   try { currentGroup = localStorage.getItem(groupKey) || DEFAULT_GROUP; } catch {}
+  const startupParams = new URLSearchParams(location.search);
+  const requestedGroupId = startupParams.get("groupId");
+  const requestedMessageId = startupParams.get("messageId");
+  if (requestedGroupId) currentGroup = requestedGroupId;
   const allGroups = () => [{id:DEFAULT_GROUP,name:DEFAULT_GROUP}, ...groups];
   const groupName = id => (allGroups().find(g => g.id === id) || {name:"…"}).name;
   const inGroup = m => (m.groupId || DEFAULT_GROUP) === currentGroup;
@@ -13,10 +17,19 @@
     const box = $("groupList");
     box.innerHTML = allGroups().map(g => `<button type="button" class="group-item ${g.id===currentGroup?"active":""}" data-gid="${escapeHtml(g.id)}">${escapeHtml(g.name)}</button>`).join("");
     box.querySelectorAll("[data-gid]").forEach(b => b.addEventListener("click", () => setGroup(b.dataset.gid)));
+    const welcomeBox = $("welcomeGroups");
+    if (welcomeBox) {
+      welcomeBox.innerHTML = allGroups().map(g => `<button type="button" class="welcome-group ${g.id===currentGroup?"active":""}" data-welcome-gid="${escapeHtml(g.id)}"><span class="welcome-group-icon">▤</span><span>${escapeHtml(g.name)}</span><span class="welcome-group-arrow">←</span></button>`).join("");
+      welcomeBox.querySelectorAll("[data-welcome-gid]").forEach(b => b.addEventListener("click", () => setGroup(b.dataset.welcomeGid)));
+    }
   }
   function setGroup(id){
     currentGroup = id; try { localStorage.setItem(groupKey, id); } catch {}
-    $("groupMenu").classList.add("hidden"); selectedId = null; showWelcome(); render();
+    $("groupMenu").classList.add("hidden"); $("groupBtn").setAttribute("aria-expanded","false");
+    const first = sortMsgs(messages.filter(m => (m.groupId || DEFAULT_GROUP) === currentGroup))[0];
+    selectedId = first ? first.id : null;
+    if (!selectedId) showWelcome();
+    render();
   }
   async function addGroup(){
     if(blocked()){toast(OFFLINE_MSG);return}
@@ -101,7 +114,6 @@
     return Promise.all([cacheGet("messages"),cacheGet("groups")]).then(([cm,cg])=>{
       if(!serverMsgs&&Array.isArray(cm))messages=sortMsgs(cm);
       if(!serverGroups&&Array.isArray(cg))groups=cg;
-      const requestedMessageId = new URLSearchParams(location.search).get("messageId");
       if(requestedMessageId && messages.some(m => m.id === requestedMessageId)) selectedId = requestedMessageId;
       render();
       if(!online&&!serverMsgs)setConnStatus();
@@ -139,8 +151,11 @@
         legacy.forEach(l=>{const b={updatedAt:l.updatedAt,content:l.content,imagesJson:l.imagesJson};bodyCache.set(l.id,b);cacheSet("body:"+l.id,b)});
         if(legacy.length)migrateLegacy(legacy);
         serverMsgs=true;cacheSet("messages",messages);
-        const requestedMessageId = new URLSearchParams(location.search).get("messageId");
-        if(requestedMessageId && messages.some(m => m.id === requestedMessageId)) selectedId = requestedMessageId;
+        if(requestedMessageId && messages.some(m => m.id === requestedMessageId)) {
+          selectedId = requestedMessageId;
+          const target = messages.find(m => m.id === requestedMessageId);
+          if (!requestedGroupId && target && target.groupId) { currentGroup = target.groupId; try { localStorage.setItem(groupKey, currentGroup); } catch {} }
+        }
         setConnStatus();
         render();
       },err=>{setStatus("تعذر الاتصال بقاعدة البيانات");console.error("Firebase read error:",err);toast("خطأ اتصال: "+(err&&err.code?err.code:"راجع إعدادات Firebase"));});
@@ -155,7 +170,7 @@
     listEl.querySelectorAll(".conversation").forEach(el=>el.addEventListener("click",()=>selectMessage(el.dataset.id)));
     listEl.querySelectorAll("[data-move]").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();moveMessage(b.closest(".conversation").dataset.id,Number(b.dataset.move))}));
     if(selectedId && !messages.some(m=>m.id===selectedId)){selectedId=null;showWelcome()}
-    else if(selectedId) showMessage();
+    else if(selectedId) { const activeMessage=messages.find(m=>m.id===selectedId); if(activeMessage&&activeMessage.groupId&&activeMessage.groupId!==currentGroup){currentGroup=activeMessage.groupId;try{localStorage.setItem(groupKey,currentGroup)}catch{} renderGroupMenu();} showMessage(); }
   }
   async function moveMessage(id,dir){
     if(blocked()){toast(OFFLINE_MSG);return}
@@ -172,11 +187,11 @@
       else saveLocal();
     }catch(e){console.error(e);toast("تعذر حفظ الترتيب"+(e&&e.code?" ("+e.code+")":"")+". تحقق من صلاحيات قاعدة البيانات")}
   }
-  $("groupBtn").addEventListener("click",e=>{e.stopPropagation();$("groupMenu").classList.toggle("hidden")});
+  $("groupBtn").addEventListener("click",e=>{e.stopPropagation();const menu=$("groupMenu");menu.classList.toggle("hidden");$("groupBtn").setAttribute("aria-expanded",String(!menu.classList.contains("hidden")))});
   $("groupAddBtn").addEventListener("click",addGroup);
-  document.addEventListener("click",e=>{if(!e.target.closest("#groupMenu"))$("groupMenu").classList.add("hidden")});
+  document.addEventListener("click",e=>{if(!e.target.closest("#groupMenu")&&!e.target.closest("#groupBtn")){$("groupMenu").classList.add("hidden");$("groupBtn").setAttribute("aria-expanded","false")}});
   $("reorderBtn").addEventListener("click",()=>{reorderMode=!reorderMode;$("reorderBtn").classList.toggle("on",reorderMode);if(reorderMode&&$("searchInput").value.trim())toast("امسح البحث لتحريك الرسائل");render()});
-  function selectMessage(id){selectedId=id;render()}
+  function selectMessage(id){const m=messages.find(x=>x.id===id);if(m&&m.groupId&&m.groupId!==currentGroup){currentGroup=m.groupId;try{localStorage.setItem(groupKey,currentGroup)}catch{}}selectedId=id;render()}
   function showWelcome(){$("welcome").classList.remove("hidden");$("chatView").classList.add("hidden")}
   function readImages(m){
     try { const v=m?.imagesJson; const arr=typeof v==="string"?JSON.parse(v||"[]"):[]; return Array.isArray(arr)?arr.filter(x=>typeof x==="string"&&x.startsWith("data:image/")):[]; } catch { return []; }
@@ -220,7 +235,7 @@
         // الإبقاء على notice القديم للتوافق مع أي استخدام سابق.
         notice: {id, title: m.title, content: String(content || "").slice(0, 2000), action: isEdit ? "edit" : "add", ts: noticeTs},
         // سجل مستقل لكل إضافة/تعديل حتى لا تضيع الإشعارات المتتالية.
-        ["jigNotifications/"+noticeRef.key]: {id, title: m.title, action: isEdit ? "edit" : "add", ts: noticeTs}
+        ["jigNotifications/"+noticeRef.key]: {id, title: m.title, groupId: m.groupId || DEFAULT_GROUP, action: isEdit ? "edit" : "add", ts: noticeTs}
       };
       await db.ref().update(updates);
       const b = {updatedAt: m.updatedAt, content, imagesJson}; bodyCache.set(id, b); cacheSet("body:"+id, b);

@@ -1,4 +1,4 @@
-const CACHE_NAME = "important-instructions-shell-v13";
+const CACHE_NAME = "important-instructions-shell-v14";
 const ASSETS = ["./", "./index.html", "./style.css", "./app.js", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png"];
 const EXTRA = ["./firebase-config.js", "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js", "https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"];
 const ownMatch = req => caches.open(CACHE_NAME).then(c => c.match(req, { ignoreSearch: true }));
