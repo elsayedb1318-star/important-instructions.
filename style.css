@@ -116,3 +116,19 @@
   .chat-header .message-actions-wrap{flex-basis:18px !important;width:18px !important;height:20px !important}
   .chat-header .message-menu-btn{width:18px !important;height:20px !important;min-width:18px !important;min-height:20px !important;font-size:15px !important}
 }
+\n
+/* Added media, file preview, archive/trash and nested folder tools */
+.notify-edit-label{display:flex!important;flex-direction:row!important;align-items:center;gap:9px}
+.notify-edit-label input{width:auto!important}
+.message-image-item{position:relative;display:inline-block;max-width:100%}
+.message-image-item img{cursor:zoom-in}
+.image-download{display:inline-block;margin:4px 0 8px;padding:5px 9px;border-radius:7px;background:#e4f1ec;color:#075e54;text-decoration:none;font-size:12px}
+.image-zoom-overlay{display:none;position:fixed;inset:0;z-index:100000;background:#000e;align-items:center;justify-content:center;padding:20px}
+.image-zoom-overlay.show{display:flex}
+.image-zoom-overlay img{max-width:96vw;max-height:88vh;object-fit:contain}
+.image-zoom-overlay button{position:absolute;top:12px;right:16px;border:0;border-radius:50%;width:42px;height:42px;font-size:28px;background:#fff;color:#111}
+.drive-file-card{margin:14px 0;padding:12px;border:1px solid #d6e4df;border-radius:12px;background:#fff;display:flex;flex-direction:column;gap:9px}
+.drive-file-card iframe{width:100%;height:min(65vh,560px);border:0;border-radius:8px;background:#f4f6f5}
+.drive-file-card a{align-self:flex-start;background:#075e54;color:#fff;padding:8px 14px;border-radius:8px;text-decoration:none}
+.conversation[draggable=true]{cursor:grab}
+.conversation[draggable=true]:active{cursor:grabbing}

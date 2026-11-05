@@ -19,7 +19,10 @@
   <main class="app-shell">
     <aside class="sidebar">
       <div class="sidebar-heading"><div class="group-wrap"><button id="groupBtn" type="button" class="group-btn" aria-expanded="false"><span class="group-btn-label">GROUP</span><span class="group-btn-arrow" aria-hidden="true">⌄</span></button><small id="groupCurrent" class="group-current">instructions</small></div><div class="heading-btns"><button id="reorderBtn" class="round-btn" title="ترتيب الرسائل">⇅</button><button id="newBtn" class="round-btn" title="إضافة رسالة جديدة">＋</button></div></div>
-      <div id="groupMenu" class="group-menu hidden"><div id="groupList"></div><button type="button" id="groupAddBtn" class="group-item group-add">＋ ADD</button></div>
+      <div id="groupMenu" class="group-menu hidden"><div id="groupList"></div><button type="button" id="groupAddBtn" class="group-item group-add">＋ ADD</button>
+      <button type="button" id="subGroupAddBtn" class="group-item group-add">＋ مجلد فرعي</button>
+      <button type="button" id="archiveViewBtn" class="group-item group-add">عرض الأرشيف</button>
+      <button type="button" id="trashViewBtn" class="group-item group-add">سلة المحذوفات</button></div>
       <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="ابحث في العناوين..."></label>
       <div id="conversationList" class="conversation-list">
         <div class="empty-list">لا توجد رسائل بعد.<br>اضغط ＋ لإضافة أول رسالة.</div>
@@ -48,7 +51,9 @@
               <button id="copyBtn" class="message-action-item" type="button" role="menuitem">نسخ النص</button>
               <button id="shareBtn" class="message-action-item" type="button" role="menuitem">مشاركة</button>
               <button id="editBtn" class="message-action-item" type="button" role="menuitem">تعديل</button>
-                  <button id="deleteBtn" class="message-action-item danger" type="button" role="menuitem">حذف</button>
+                  <button id="copyToGroupBtn" class="message-action-item" type="button" role="menuitem">نسخ إلى جروب آخر</button>
+                  <button id="archiveBtn" class="message-action-item" type="button" role="menuitem">أرشفة / إلغاء الأرشفة</button>
+                  <button id="trashBtn" class="message-action-item danger" type="button" role="menuitem">نقل إلى سلة المحذوفات</button>
                 </div>
               </div>
             </div>
@@ -68,6 +73,9 @@
       <label>عنوان الرسالة<input id="messageTitle" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" maxlength="120" required placeholder="مثال: تعليمات مهمة"></label>
       <label>محتوى الرسالة<textarea id="messageContent" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" rows="8" placeholder="اكتب المحتوى هنا... يمكنك إضافة صور أيضًا"></textarea></label>
       <div id="textTools" class="text-tools"><button type="button" data-t="cut">قص</button><button type="button" data-t="copy">نسخ</button><button type="button" data-t="all">اختيار الكل</button><button type="button" data-t="del">حذف</button></div>
+      <label>رابط ملف PDF أو مستند Google Drive<input id="messageFileUrl" type="url" inputmode="url" placeholder="الصق رابط PDF أو ملف من Google Drive"></label>
+      <div class="dialog-note">ارفع الملف على Google Drive، واجعل المشاركة «أي شخص لديه الرابط – مشاهد»، ثم الصق الرابط هنا. يمكن فتح PDF داخل التطبيق وتنزيله.</div>
+      <label class="notify-edit-label"><input id="notifyOnEdit" type="checkbox"> إرسال إشعار إلى JIG SEARCH عند تعديل هذه الرسالة</label>
       <label>رابط فيديو Google Drive<input id="messageVideoUrl" type="url" inputmode="url" placeholder="الصق رابط مشاركة الفيديو من Google Drive"></label>
       <div class="dialog-note">اجعل مشاركة الفيديو في Google Drive على: أي شخص لديه الرابط – مشاهد. سيظهر الفيديو داخل التطبيق دون الانتقال إلى Drive.</div>
       <label class="image-picker-label">إضافة صور (يمكن اختيار أكثر من صورة)<input id="messageImages" type="file" accept="image/*" multiple></label>
