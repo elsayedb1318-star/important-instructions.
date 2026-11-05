@@ -37,3 +37,19 @@
 .drive-video-card{display:flex;align-items:center;gap:13px;width:min(100%,440px);margin:16px 0;padding:14px;border:1px solid #cfe2dc;border-radius:12px;background:linear-gradient(135deg,#f4faf7,#e6f3ee);color:#174b40;text-align:right;cursor:pointer;font:inherit}
 .drive-video-card:hover{background:#dcefe8}.drive-video-card span:last-child{display:flex;flex-direction:column;gap:4px}.drive-video-card small{font-size:12px;color:#647a72}.drive-video-play{width:46px;height:46px;flex:0 0 46px;border-radius:50%;display:grid;place-items:center;background:#087e68;color:white;font-size:18px;padding-right:3px}
 .video-preview-dialog{width:min(900px,calc(100% - 24px));max-width:900px;padding:12px;border-radius:14px;background:#10201d;color:white}.video-preview-head{display:flex;justify-content:space-between;align-items:center;padding:3px 4px 12px}.video-preview-head button{border:0;background:#ffffff20;color:white;border-radius:8px;width:38px;height:38px;font-size:26px;cursor:pointer}.video-frame-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:9px;overflow:hidden}.video-frame-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+
+/* Header title and compact message menu */
+.chat-title{min-width:0;flex:1}
+.chat-title-row{display:flex;align-items:center;gap:7px;min-width:0}
+.chat-title-row h2{flex:0 1 auto;min-width:0;margin:0;font-size:17px;line-height:1.35;overflow-wrap:anywhere}
+.chat-title>small{display:block;margin-top:5px}
+.message-actions-wrap{position:relative;flex:0 0 auto;margin:0}
+.message-menu-btn{width:auto;height:auto;min-width:24px;min-height:28px;padding:0 2px;border:0;border-radius:5px;background:transparent;color:inherit;font-size:inherit;line-height:1;box-shadow:none}
+.message-menu-btn:hover,.message-menu-btn[aria-expanded="true"]{background:#e4efeb;border-color:transparent}
+.message-actions-menu{top:calc(100% + 6px);right:0;left:auto}
+.drive-video-card{display:block;padding:10px;text-align:inherit}
+.drive-video-thumb{position:relative;display:block;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:9px;background:linear-gradient(135deg,#dcebe5,#b9d8cc)}
+.drive-video-thumb img{display:block;width:100%;height:100%;object-fit:cover}
+.drive-video-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:54px;height:54px;border:2px solid #ffffffd9;box-shadow:0 2px 12px #0005;padding:0 0 0 3px}
+.drive-video-caption{display:flex;flex-direction:column;gap:4px;padding:10px 4px 2px}
+@media(max-width:760px){.chat-title-row h2{font-size:14px}.message-menu-btn{font-size:14px;min-width:22px;min-height:24px}.message-actions-menu{right:0;left:auto}.drive-video-card{width:100%;max-width:440px}}

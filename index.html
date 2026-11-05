@@ -39,15 +39,20 @@
       <div id="chatView" class="chat-view hidden">
         <div class="chat-header">
           <div class="avatar">✉</div>
-          <div class="chat-title"><h2 id="viewTitle"></h2><small id="viewDate"></small></div>
-          <div class="message-actions-wrap">
-            <button id="messageMenuBtn" class="message-menu-btn" type="button" aria-label="خيارات الرسالة" aria-expanded="false" title="خيارات الرسالة">⋮</button>
-            <div id="messageActionsMenu" class="message-actions-menu hidden" role="menu">
+          <div class="chat-title">
+            <div class="chat-title-row">
+              <h2 id="viewTitle"></h2>
+              <div class="message-actions-wrap">
+                <button id="messageMenuBtn" class="message-menu-btn" type="button" aria-label="خيارات الرسالة" aria-expanded="false" title="خيارات الرسالة">⋮</button>
+                <div id="messageActionsMenu" class="message-actions-menu hidden" role="menu">
               <button id="copyBtn" class="message-action-item" type="button" role="menuitem">نسخ النص</button>
               <button id="shareBtn" class="message-action-item" type="button" role="menuitem">مشاركة</button>
               <button id="editBtn" class="message-action-item" type="button" role="menuitem">تعديل</button>
-              <button id="deleteBtn" class="message-action-item danger" type="button" role="menuitem">حذف</button>
+                  <button id="deleteBtn" class="message-action-item danger" type="button" role="menuitem">حذف</button>
+                </div>
+              </div>
             </div>
+            <small id="viewDate"></small>
           </div>
         </div>
         <div class="message-area">
