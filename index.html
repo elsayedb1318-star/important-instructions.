@@ -40,7 +40,15 @@
         <div class="chat-header">
           <div class="avatar">✉</div>
           <div class="chat-title"><h2 id="viewTitle"></h2><small id="viewDate"></small></div>
-          <div class="chat-tools"><button id="copyBtn" class="tool-btn">نسخ المحتوى</button><button id="shareBtn" class="tool-btn">مشاركة</button><button id="editBtn" class="tool-btn">تعديل</button><button id="deleteBtn" class="tool-btn danger">حذف</button></div>
+          <div class="message-actions-wrap">
+            <button id="messageMenuBtn" class="message-menu-btn" type="button" aria-label="خيارات الرسالة" aria-expanded="false" title="خيارات الرسالة">⋮</button>
+            <div id="messageActionsMenu" class="message-actions-menu hidden" role="menu">
+              <button id="copyBtn" class="message-action-item" type="button" role="menuitem">نسخ النص</button>
+              <button id="shareBtn" class="message-action-item" type="button" role="menuitem">مشاركة</button>
+              <button id="editBtn" class="message-action-item" type="button" role="menuitem">تعديل</button>
+              <button id="deleteBtn" class="message-action-item danger" type="button" role="menuitem">حذف</button>
+            </div>
+          </div>
         </div>
         <div class="message-area">
           <article id="messageBubble" class="message-bubble"></article>
@@ -55,6 +63,8 @@
       <label>عنوان الرسالة<input id="messageTitle" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" maxlength="120" required placeholder="مثال: تعليمات مهمة"></label>
       <label>محتوى الرسالة<textarea id="messageContent" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" rows="8" placeholder="اكتب المحتوى هنا... يمكنك إضافة صور أيضًا"></textarea></label>
       <div id="textTools" class="text-tools"><button type="button" data-t="cut">قص</button><button type="button" data-t="copy">نسخ</button><button type="button" data-t="all">اختيار الكل</button><button type="button" data-t="del">حذف</button></div>
+      <label>رابط فيديو Google Drive<input id="messageVideoUrl" type="url" inputmode="url" placeholder="الصق رابط مشاركة الفيديو من Google Drive"></label>
+      <div class="dialog-note">اجعل مشاركة الفيديو في Google Drive على: أي شخص لديه الرابط – مشاهد. سيظهر الفيديو داخل التطبيق دون الانتقال إلى Drive.</div>
       <label class="image-picker-label">إضافة صور (يمكن اختيار أكثر من صورة)<input id="messageImages" type="file" accept="image/*" multiple></label>
       <div id="imagePreview" class="image-preview"></div>
       <div class="dialog-note">الصور يتم تصغير حجمها تلقائيًا لتسهيل حفظها ومشاركتها مع جميع المستخدمين. الحد الأقصى 4 صور لكل رسالة.</div>
@@ -69,7 +79,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script>
   (function(){
-    var PIN="1111"; /* غيّر الرقم السري من هنا */
+    var PIN="1111"; /* الرقم السري الحالي؛ غيّره من هنا إذا أردت */
     var pass=false;
     function ask(){
       return new Promise(function(res){
@@ -87,7 +97,7 @@
       });
     }
     document.addEventListener("click",function(e){
-      var b=e.target.closest&&e.target.closest("#newBtn,#welcomeNewBtn,#editBtn,#deleteBtn,#reorderBtn,#groupAddBtn");
+      var b=e.target.closest&&e.target.closest("#newBtn,#welcomeNewBtn,#messageMenuBtn,#reorderBtn,#groupAddBtn");
       if(!b) return;
       if(pass){pass=false;return;}
       if(b.id==="reorderBtn"&&b.classList.contains("on")) return;
