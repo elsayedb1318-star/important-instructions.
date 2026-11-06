@@ -8,7 +8,7 @@
   const requestedGroupId = startupParams.get("groupId");
   const requestedMessageId = startupParams.get("messageId");
   if (requestedGroupId) currentGroup = requestedGroupId;
-  const allGroups = () => [{id:DEFAULT_GROUP,name:DEFAULT_GROUP,color:""}, ...groups];
+  const allGroups = () => [{id:DEFAULT_GROUP,name:DEFAULT_GROUP}, ...groups];
   const groupName = id => (allGroups().find(g => g.id === id) || {name:"…"}).name;
   const activeMessages = () => viewMode === "trash" ? trashItems : messages.filter(m => viewMode === "archive" ? !!m.archived : !m.archived);
   const inGroup = m => (m.groupId || DEFAULT_GROUP) === currentGroup;
@@ -16,10 +16,8 @@
   function renderGroupMenu(){
     $("groupCurrent").textContent = groupName(currentGroup);
     const box = $("groupList");
-    box.innerHTML = allGroups().map(g => `<div class="group-row"><button type="button" class="group-item ${g.id===currentGroup?"active":""}" data-gid="${escapeHtml(g.id)}" style="padding-right:${g.parentId?30:12}px;--group-color:${g.color||'#128c7e'}">${g.parentId?"↳ ":""}${escapeHtml(g.name)}</button><button type="button" class="group-color-btn" data-color-gid="${escapeHtml(g.id)}" title="تغيير لون الجروب">🎨</button></div>`).join("");
+    box.innerHTML = allGroups().map(g => `<button type="button" class="group-item ${g.id===currentGroup?"active":""}" data-gid="${escapeHtml(g.id)}" style="padding-right:${g.parentId?30:12}px">${g.parentId?"↳ ":""}${escapeHtml(g.name)}</button>`).join("");
     box.querySelectorAll("[data-gid]").forEach(b => b.addEventListener("click", () => setGroup(b.dataset.gid)));
-    box.querySelectorAll("[data-color-gid]").forEach(b=>b.addEventListener("click",async e=>{e.stopPropagation();const g=allGroups().find(x=>x.id===b.dataset.colorGid);if(!g||blocked())return;const color=prompt("لون الجروب بصيغة HEX (مثال #168aad):",g.color||"#128c7e");if(!color||!/^#[0-9a-f]{6}$/i.test(color))return;try{if(db&&g.id!==DEFAULT_GROUP)await db.ref("savedGroups/"+g.id+"/color").set(color);g.color=color;if(!db||g.id===DEFAULT_GROUP)localStorage.setItem("ii_default_group_color",color);renderGroupMenu();toast("تم تحديث لون الجروب")}catch{toast("تعذر حفظ لون الجروب")}}));
-    box.querySelectorAll("[data-gid]").forEach(b => b.addEventListener("dblclick", async e => {e.preventDefault();const g=allGroups().find(x=>x.id===b.dataset.gid);if(!g||blocked())return;const color=prompt("لون الجروب بصيغة HEX (مثال #168aad):",g.color||"#128c7e");if(!color||!/^#[0-9a-f]{6}$/i.test(color))return;try{if(db&&g.id!==DEFAULT_GROUP)await db.ref("savedGroups/"+g.id+"/color").set(color);g.color=color;if(!db||g.id===DEFAULT_GROUP)localStorage.setItem("ii_default_group_color",color);renderGroupMenu();toast("تم تحديث لون الجروب")}catch{toast("تعذر حفظ لون الجروب")}}));
     const welcomeBox = $("welcomeGroups");
     if (welcomeBox) {
       welcomeBox.innerHTML = allGroups().map(g => `<button type="button" class="welcome-group ${g.id===currentGroup?"active":""}" data-welcome-gid="${escapeHtml(g.id)}"><span class="welcome-group-icon">▤</span><span>${escapeHtml(g.name)}</span><span class="welcome-group-arrow">←</span></button>`).join("");
@@ -144,7 +142,7 @@
       db.ref(".info/connected").on("value",s=>{online=s.val()===true;setConnStatus()});
       db.ref("savedGroups").on("value",snap=>{
         const d=snap.val()||{};
-        groups=Object.entries(d).map(([id,v])=>({id,name:String((v&&v.name)||""),parentId:(v&&v.parentId)||"",createdAt:(v&&v.createdAt)||0,color:(v&&v.color)||""})).filter(g=>g.name).sort((a,b)=>a.createdAt-b.createdAt);
+        groups=Object.entries(d).map(([id,v])=>({id,name:String((v&&v.name)||""),parentId:(v&&v.parentId)||"",createdAt:(v&&v.createdAt)||0})).filter(g=>g.name).sort((a,b)=>a.createdAt-b.createdAt);
         if(currentGroup!==DEFAULT_GROUP&&!groups.some(g=>g.id===currentGroup)){currentGroup=DEFAULT_GROUP;try{localStorage.setItem(groupKey,currentGroup)}catch{}}
         serverGroups=true;cacheSet("groups",groups);
         render();
@@ -499,17 +497,59 @@
   applyPrefs();
   $("themeBtn").addEventListener("click",()=>{prefs.theme=prefs.theme==="dark"?"light":"dark";savePrefs()});
   $("fontBtn").addEventListener("click",()=>{prefs.font=prefs.font==="small"?"medium":prefs.font==="medium"?"large":"small";savePrefs();toast("حجم الخط: "+(prefs.font==="small"?"صغير":prefs.font==="large"?"كبير":"متوسط"))});
-  // لون الجروب: انقر مطولاً/بالزر الأيمن على اسمه من القائمة لاختيار اللون.
-  $("groupList").addEventListener("contextmenu",async e=>{const b=e.target.closest("[data-gid]");if(!b)return;e.preventDefault();const g=allGroups().find(x=>x.id===b.dataset.gid);if(!g||blocked())return;const color=prompt("أدخل لون الجروب بصيغة HEX (مثال #168aad):",g.color||"#128c7e");if(!color||!/^#[0-9a-f]{6}$/i.test(color))return;try{if(db&&g.id!==DEFAULT_GROUP)await db.ref("savedGroups/"+g.id+"/color").set(color);g.color=color;if(!db||g.id===DEFAULT_GROUP)localStorage.setItem("ii_default_group_color",color);renderGroupMenu();toast("تم تحديث لون الجروب")}catch{toast("تعذر حفظ لون الجروب")}});
-  const defaultColor=localStorage.getItem("ii_default_group_color");if(defaultColor)allGroups()[0].color=defaultColor;
+  // النسخ الاحتياطي مشفر بكلمة المرور التي طلبها المستخدم.
+  const encoder = new TextEncoder(), decoder = new TextDecoder();
+  function bytesToB64(bytes){let bin="";bytes.forEach(b=>bin+=String.fromCharCode(b));return btoa(bin)}
+  function b64ToBytes(value){const bin=atob(value);return Uint8Array.from(bin,c=>c.charCodeAt(0))}
+  async function backupKey(salt,password){
+    const material=await crypto.subtle.importKey("raw",encoder.encode(password),"PBKDF2",false,["deriveKey"]);
+    return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:250000,hash:"SHA-256"},material,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+  }
+  async function encryptBackup(bundle,password){
+    if(!crypto.subtle)throw new Error("التشفير غير مدعوم في هذا المتصفح؛ افتح التطبيق عبر HTTPS");
+    const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),key=await backupKey(salt,password);
+    const encrypted=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,encoder.encode(JSON.stringify(bundle)));
+    return {app:"Important Instructions",backupFormat:"encrypted-v1",kdf:"PBKDF2-SHA256",iterations:250000,cipher:"AES-GCM",salt:bytesToB64(salt),iv:bytesToB64(iv),data:bytesToB64(new Uint8Array(encrypted))};
+  }
+  async function decryptBackup(envelope,password){
+    if(!envelope||envelope.app!=="Important Instructions"||envelope.backupFormat!=="encrypted-v1")throw new Error("هذا الملف ليس نسخة احتياطية مشفرة صالحة من التطبيق");
+    const key=await backupKey(b64ToBytes(envelope.salt),password);
+    const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64ToBytes(envelope.iv)},key,b64ToBytes(envelope.data));
+    const bundle=JSON.parse(decoder.decode(plain));
+    if(!Array.isArray(bundle.messages)||!Array.isArray(bundle.groups))throw new Error("محتويات النسخة الاحتياطية غير مكتملة");
+    return bundle;
+  }
   $("exportBtn").addEventListener("click",async()=>{
-    const btn=$("exportBtn");btn.disabled=true;toast("جارٍ تجهيز النسخة الاحتياطية...");
+    const btn=$("exportBtn");btn.disabled=true;toast("جارٍ تجهيز النسخة الاحتياطية المشفرة...");
     try{
-      const bundle={app:"Important Instructions",version:1,exportedAt:new Date().toISOString(),groups:allGroups(),messages:[],trash:trashItems};
+      const password=prompt("أدخل الرقم السري للنسخة الاحتياطية (186186):","186186");if(password===null)return;if(!password)throw new Error("يجب إدخال رقم سري للنسخة الاحتياطية");
+      const bundle={app:"Important Instructions",version:2,exportedAt:new Date().toISOString(),groups:allGroups(),messages:[],trash:trashItems};
       for(const m of messages){const b=await getBody(m);bundle.messages.push({meta:m,body:b||{content:"",imagesJson:"[]",filesJson:"[]"}})}
-      const blob=new Blob([JSON.stringify(bundle)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="important-instructions-backup-"+new Date().toISOString().slice(0,10)+".json";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);toast("تم تصدير الرسائل والصور والبيانات")
-    }catch(e){console.error(e);toast("تعذر إنشاء النسخة الاحتياطية. تحقق من الاتصال لتحميل كل الصور")}
+      const encrypted=await encryptBackup(bundle,password);
+      const blob=new Blob([JSON.stringify(encrypted)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="important-instructions-backup-encrypted-"+new Date().toISOString().slice(0,10)+".json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);toast("تم إنشاء نسخة احتياطية مشفرة بنجاح")
+    }catch(e){console.error(e);toast(e.message||"تعذر إنشاء النسخة الاحتياطية. تحقق من الاتصال")}
     finally{btn.disabled=false}
+  });
+  $("importBtn").addEventListener("click",()=>{
+    if(blocked()){toast(OFFLINE_MSG);return}
+    if(!confirm("استعادة نسخة احتياطية ستستبدل البيانات الحالية في Firebase. يفضّل إنشاء نسخة احتياطية من الوضع الحالي أولاً. هل تريد المتابعة؟"))return;
+    $("backupFileInput").click();
+  });
+  $("backupFileInput").addEventListener("change",async e=>{
+    const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;
+    try{
+      if(!db||!online)throw new Error("لاستعادة النسخة، افتح التطبيق مع الاتصال بقاعدة Firebase");
+      const envelope=JSON.parse(await file.text());
+      const password=prompt("أدخل الرقم السري لفك النسخة الاحتياطية:","186186");if(password===null)return;if(!password)throw new Error("يجب إدخال الرقم السري");
+      const bundle=await decryptBackup(envelope,password);
+      if(!confirm("تم فك تشفير النسخة بنجاح. سيتم استبدال الرسائل والجروبات وسلة المحذوفات الحالية بالبيانات الموجودة في النسخة بتاريخ "+(bundle.exportedAt||"غير معروف")+". هل تؤكد الاستعادة؟"))return;
+      const updates={savedMessages:null,savedBodies:null,savedGroups:null,deletedMessages:null};
+      for(const g of bundle.groups){if(g.id&&g.id!==DEFAULT_GROUP){const {id,...value}=g;updates["savedGroups/"+id]=value}}
+      for(const item of bundle.messages){if(!item.meta||!item.meta.id)continue;const id=item.meta.id;const {id:ignore,...meta}=item.meta;updates["savedMessages/"+id]=meta;updates["savedBodies/"+id]={content:item.body?.content||"",imagesJson:item.body?.imagesJson||"[]",filesJson:item.body?.filesJson||"[]"}}
+      for(const item of (bundle.trash||[])){if(!item.id)continue;const {id,deletedAt,trashBody,...meta}=item;updates["deletedMessages/"+id]={meta,deletedAt:deletedAt||Date.now(),body:trashBody||{content:"",imagesJson:"[]",filesJson:"[]"}}}
+      await db.ref().update(updates);
+      toast("تمت استعادة النسخة الاحتياطية بنجاح. انتظر لحظات حتى يتم تحديث البيانات.");
+    }catch(err){console.error(err);toast(err.name==="OperationError"?"كلمة السر غير صحيحة أو ملف النسخة تالف":(err.message||"تعذرت استعادة النسخة الاحتياطية"))}
   });
 
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
