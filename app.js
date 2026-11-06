@@ -519,10 +519,32 @@
     if(!Array.isArray(bundle.messages)||!Array.isArray(bundle.groups))throw new Error("محتويات النسخة الاحتياطية غير مكتملة");
     return bundle;
   }
+  // إدخال رقم النسخة الاحتياطية في حقل مخفي، دون وضع الرقم مسبقًا أو إظهاره على الشاشة.
+  function askBackupPassword(title){
+    return new Promise(resolve=>{
+      const overlay=document.createElement("div");
+      overlay.style.cssText="position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:18px";
+      const box=document.createElement("div");
+      box.style.cssText="width:min(420px,100%);background:var(--panel,#fff);color:var(--text,#222);border-radius:20px;padding:22px;box-shadow:0 12px 40px rgba(0,0,0,.3)";
+      const heading=document.createElement("h3");heading.textContent=title;heading.style.margin="0 0 16px";
+      const hint=document.createElement("p");hint.textContent="أدخل الرقم السري للنسخة الاحتياطية";hint.style.margin="0 0 12px";
+      const input=document.createElement("input");input.type="password";input.inputMode="numeric";input.autocomplete="new-password";input.placeholder="الرقم السري";input.style.cssText="box-sizing:border-box;width:100%;padding:13px;border:1px solid #999;border-radius:10px;background:var(--input-bg,#fff);color:var(--text,#222);font-size:20px;letter-spacing:5px;text-align:center";
+      const error=document.createElement("p");error.style.cssText="min-height:20px;color:#d33;margin:8px 0";
+      const actions=document.createElement("div");actions.style.cssText="display:flex;gap:10px;margin-top:12px";
+      const ok=document.createElement("button");ok.type="button";ok.textContent="حسنًا";ok.style.cssText="flex:1;padding:12px;border:0;border-radius:10px;background:#087b6d;color:white;font-size:16px";
+      const cancel=document.createElement("button");cancel.type="button";cancel.textContent="إلغاء";cancel.style.cssText="flex:1;padding:12px;border:0;border-radius:10px;background:#888;color:white;font-size:16px";
+      actions.append(ok,cancel);box.append(heading,hint,input,error,actions);overlay.append(box);document.body.append(overlay);
+      let finished=false;function done(value){if(finished)return;finished=true;overlay.remove();resolve(value)}
+      function submit(){if(input.value!=="186186"){error.textContent="الرقم السري غير صحيح";input.value="";input.focus();return}done("186186")}
+      ok.addEventListener("click",submit);cancel.addEventListener("click",()=>done(null));
+      input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();submit()}if(e.key==="Escape")done(null)});
+      overlay.addEventListener("click",e=>{if(e.target===overlay)done(null)});input.focus();
+    });
+  }
   $("exportBtn").addEventListener("click",async()=>{
     const btn=$("exportBtn");btn.disabled=true;toast("جارٍ تجهيز النسخة الاحتياطية المشفرة...");
     try{
-      const password=prompt("أدخل الرقم السري للنسخة الاحتياطية (186186):","186186");if(password===null)return;if(!password)throw new Error("يجب إدخال رقم سري للنسخة الاحتياطية");
+      const password=await askBackupPassword("إنشاء نسخة احتياطية");if(password===null)return;
       const bundle={app:"Important Instructions",version:2,exportedAt:new Date().toISOString(),groups:allGroups(),messages:[],trash:trashItems};
       for(const m of messages){const b=await getBody(m);bundle.messages.push({meta:m,body:b||{content:"",imagesJson:"[]",filesJson:"[]"}})}
       const encrypted=await encryptBackup(bundle,password);
@@ -540,7 +562,7 @@
     try{
       if(!db||!online)throw new Error("لاستعادة النسخة، افتح التطبيق مع الاتصال بقاعدة Firebase");
       const envelope=JSON.parse(await file.text());
-      const password=prompt("أدخل الرقم السري لفك النسخة الاحتياطية:","186186");if(password===null)return;if(!password)throw new Error("يجب إدخال الرقم السري");
+      const password=await askBackupPassword("استعادة نسخة احتياطية");if(password===null)return;
       const bundle=await decryptBackup(envelope,password);
       if(!confirm("تم فك تشفير النسخة بنجاح. سيتم استبدال الرسائل والجروبات وسلة المحذوفات الحالية بالبيانات الموجودة في النسخة بتاريخ "+(bundle.exportedAt||"غير معروف")+". هل تؤكد الاستعادة؟"))return;
       const updates={savedMessages:null,savedBodies:null,savedGroups:null,deletedMessages:null};

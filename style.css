@@ -216,3 +216,33 @@ body.dark-mode ::-webkit-scrollbar-track{background:#172722}
   body.dark-mode .message-area{background:transparent}
   body.dark-mode .welcome{background:transparent}
 }
+
+/* Global Bold typography requested: keep all app text clear and consistent. */
+body,
+body button,
+body input,
+body textarea,
+body select,
+body h1,
+body h2,
+body h3,
+body h4,
+body p,
+body label,
+body small,
+body time,
+body .conversation-info,
+body .message-bubble,
+body .message-text,
+body .chat-title,
+body .group-item,
+body .welcome-group,
+body .sidebar-footer,
+body .dialog-note {
+  font-weight: 700 !important;
+}
+/* Preserve comfortable input readability while keeping the entered text bold. */
+body input::placeholder,
+body textarea::placeholder {
+  font-weight: 600 !important;
+}
