@@ -132,3 +132,5 @@
 .drive-file-card a{align-self:flex-start;background:#075e54;color:#fff;padding:8px 14px;border-radius:8px;text-decoration:none}
 .conversation[draggable=true]{cursor:grab}
 .conversation[draggable=true]:active{cursor:grabbing}
+
+.role-btn{border:1px solid #ffffff66;background:#ffffff1c;color:#fff;border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;white-space:nowrap}.read-confirm-area{padding:8px 18px;background:#f7f8f7;border-top:1px solid #edf0ee;display:flex;align-items:center;gap:12px;flex-wrap:wrap}.read-confirm-area span{font-size:12px;color:#547168}.read-confirm-area .primary-btn{padding:8px 12px;font-size:12px}@media(max-width:760px){.role-btn{font-size:10px;padding:7px 8px}.read-confirm-area{padding:8px;gap:7px}.read-confirm-area span{font-size:10px}}
