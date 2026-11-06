@@ -1,4 +1,4 @@
-const CACHE_NAME = "important-instructions-shell-v17";
+const CACHE_NAME = "important-instructions-shell-v18";
 const ASSETS = ["./", "./index.html", "./style.css", "./app.js", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png"];
 const EXTRA = ["./firebase-config.js", "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js", "https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"];
 const ownMatch = req => caches.open(CACHE_NAME).then(c => c.match(req, { ignoreSearch: true }));
@@ -10,7 +10,7 @@ self.addEventListener("install", event => {
   ])).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith("rasayeli-shell-") && k !== CACHE_NAME).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => (k.startsWith("rasayeli-shell-") || k.startsWith("important-instructions-shell-")) && k !== CACHE_NAME).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener("fetch", event => {
   const req = event.request;

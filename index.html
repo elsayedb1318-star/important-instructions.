@@ -13,7 +13,7 @@
 <body>
   <header class="topbar">
     <div class="brand"><span class="brand-icon">✉</span><div><strong dir="ltr">Important Instructions</strong></div></div>
-    <div class="top-actions"><span id="syncStatus" class="status">غير متصل بقاعدة البيانات</span><button id="installBtn" class="icon-btn hidden" aria-label="تثبيت التطبيق">⬇</button></div>
+    <div class="top-actions"><span id="syncStatus" class="status">غير متصل بقاعدة البيانات</span><button id="themeBtn" class="icon-btn" type="button" title="الوضع الليلي">🌙</button><button id="fontBtn" class="icon-btn" type="button" title="حجم الخط">A±</button><button id="exportBtn" class="icon-btn" type="button" title="نسخة احتياطية">⇩</button><button id="installBtn" class="icon-btn hidden" aria-label="تثبيت التطبيق">⬇</button></div>
   </header>
 
   <main class="app-shell">
@@ -23,7 +23,7 @@
       <button type="button" id="subGroupAddBtn" class="group-item group-add">＋ مجلد فرعي</button>
       <button type="button" id="archiveViewBtn" class="group-item group-add">عرض الأرشيف</button>
       <button type="button" id="trashViewBtn" class="group-item group-add">سلة المحذوفات</button></div>
-      <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="ابحث في العناوين..."></label>
+      <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="ابحث في كل الرسائل والجروبات..."></label>
       <div id="conversationList" class="conversation-list">
         <div class="empty-list">لا توجد رسائل بعد.<br>اضغط ＋ لإضافة أول رسالة.</div>
       </div>
@@ -48,6 +48,7 @@
               <div class="message-actions-wrap">
                 <button id="messageMenuBtn" class="message-menu-btn" type="button" aria-label="خيارات الرسالة" aria-expanded="false" title="خيارات الرسالة">⋮</button>
                 <div id="messageActionsMenu" class="message-actions-menu hidden" role="menu">
+              <button id="pinBtn" class="message-action-item" type="button" role="menuitem">📌 تثبيت / إلغاء التثبيت</button>
               <button id="copyBtn" class="message-action-item" type="button" role="menuitem">نسخ النص</button>
               <button id="shareBtn" class="message-action-item" type="button" role="menuitem">مشاركة</button>
               <button id="editBtn" class="message-action-item" type="button" role="menuitem">تعديل</button>

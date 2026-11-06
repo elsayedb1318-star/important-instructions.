@@ -8,7 +8,7 @@
   const requestedGroupId = startupParams.get("groupId");
   const requestedMessageId = startupParams.get("messageId");
   if (requestedGroupId) currentGroup = requestedGroupId;
-  const allGroups = () => [{id:DEFAULT_GROUP,name:DEFAULT_GROUP}, ...groups];
+  const allGroups = () => [{id:DEFAULT_GROUP,name:DEFAULT_GROUP,color:""}, ...groups];
   const groupName = id => (allGroups().find(g => g.id === id) || {name:"…"}).name;
   const activeMessages = () => viewMode === "trash" ? trashItems : messages.filter(m => viewMode === "archive" ? !!m.archived : !m.archived);
   const inGroup = m => (m.groupId || DEFAULT_GROUP) === currentGroup;
@@ -16,8 +16,10 @@
   function renderGroupMenu(){
     $("groupCurrent").textContent = groupName(currentGroup);
     const box = $("groupList");
-    box.innerHTML = allGroups().map(g => `<button type="button" class="group-item ${g.id===currentGroup?"active":""}" data-gid="${escapeHtml(g.id)}" style="padding-right:${g.parentId?30:12}px">${g.parentId?"↳ ":""}${escapeHtml(g.name)}</button>`).join("");
+    box.innerHTML = allGroups().map(g => `<div class="group-row"><button type="button" class="group-item ${g.id===currentGroup?"active":""}" data-gid="${escapeHtml(g.id)}" style="padding-right:${g.parentId?30:12}px;--group-color:${g.color||'#128c7e'}">${g.parentId?"↳ ":""}${escapeHtml(g.name)}</button><button type="button" class="group-color-btn" data-color-gid="${escapeHtml(g.id)}" title="تغيير لون الجروب">🎨</button></div>`).join("");
     box.querySelectorAll("[data-gid]").forEach(b => b.addEventListener("click", () => setGroup(b.dataset.gid)));
+    box.querySelectorAll("[data-color-gid]").forEach(b=>b.addEventListener("click",async e=>{e.stopPropagation();const g=allGroups().find(x=>x.id===b.dataset.colorGid);if(!g||blocked())return;const color=prompt("لون الجروب بصيغة HEX (مثال #168aad):",g.color||"#128c7e");if(!color||!/^#[0-9a-f]{6}$/i.test(color))return;try{if(db&&g.id!==DEFAULT_GROUP)await db.ref("savedGroups/"+g.id+"/color").set(color);g.color=color;if(!db||g.id===DEFAULT_GROUP)localStorage.setItem("ii_default_group_color",color);renderGroupMenu();toast("تم تحديث لون الجروب")}catch{toast("تعذر حفظ لون الجروب")}}));
+    box.querySelectorAll("[data-gid]").forEach(b => b.addEventListener("dblclick", async e => {e.preventDefault();const g=allGroups().find(x=>x.id===b.dataset.gid);if(!g||blocked())return;const color=prompt("لون الجروب بصيغة HEX (مثال #168aad):",g.color||"#128c7e");if(!color||!/^#[0-9a-f]{6}$/i.test(color))return;try{if(db&&g.id!==DEFAULT_GROUP)await db.ref("savedGroups/"+g.id+"/color").set(color);g.color=color;if(!db||g.id===DEFAULT_GROUP)localStorage.setItem("ii_default_group_color",color);renderGroupMenu();toast("تم تحديث لون الجروب")}catch{toast("تعذر حفظ لون الجروب")}}));
     const welcomeBox = $("welcomeGroups");
     if (welcomeBox) {
       welcomeBox.innerHTML = allGroups().map(g => `<button type="button" class="welcome-group ${g.id===currentGroup?"active":""}" data-welcome-gid="${escapeHtml(g.id)}"><span class="welcome-group-icon">▤</span><span>${escapeHtml(g.name)}</span><span class="welcome-group-arrow">←</span></button>`).join("");
@@ -59,7 +61,7 @@
   function toast(s){ const t=$("toast");t.textContent=s;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2600); }
   function setStatus(s,good=false){$("syncStatus").textContent=s;$("syncStatus").style.color=good?"#c9f5df":"#f9d7c7";}
   const sortKey = m => typeof m.order === "number" ? m.order : -(m.updatedAt || m.createdAt || 0);
-  const sortMsgs = arr => arr.sort((a, b) => sortKey(a) - sortKey(b));
+  const sortMsgs = arr => arr.sort((a, b) => Number(!!b.pinned)-Number(!!a.pinned) || sortKey(a) - sortKey(b));
   function newOrder(){ const o = messages.filter(m => typeof m.order === "number").map(m => m.order); return o.length ? Math.min(...o) - 1 : -Date.now(); }
   function loadLocal(){try{return sortMsgs(JSON.parse(localStorage.getItem(localKey)||"[]"))}catch{return []}}
   function saveLocal(){localStorage.setItem(localKey,JSON.stringify(messages))}
@@ -142,7 +144,7 @@
       db.ref(".info/connected").on("value",s=>{online=s.val()===true;setConnStatus()});
       db.ref("savedGroups").on("value",snap=>{
         const d=snap.val()||{};
-        groups=Object.entries(d).map(([id,v])=>({id,name:String((v&&v.name)||""),parentId:(v&&v.parentId)||"",createdAt:(v&&v.createdAt)||0})).filter(g=>g.name).sort((a,b)=>a.createdAt-b.createdAt);
+        groups=Object.entries(d).map(([id,v])=>({id,name:String((v&&v.name)||""),parentId:(v&&v.parentId)||"",createdAt:(v&&v.createdAt)||0,color:(v&&v.color)||""})).filter(g=>g.name).sort((a,b)=>a.createdAt-b.createdAt);
         if(currentGroup!==DEFAULT_GROUP&&!groups.some(g=>g.id===currentGroup)){currentGroup=DEFAULT_GROUP;try{localStorage.setItem(groupKey,currentGroup)}catch{}}
         serverGroups=true;cacheSet("groups",groups);
         render();
@@ -186,9 +188,17 @@
     renderGroupMenu();
     const q=$("searchInput").value.trim().toLocaleLowerCase();
     const source=activeMessages();
-    const filtered=source.filter(m=>(viewMode==="trash" || inGroup(m))&&`${m.title||""}\n${previewOf(m)}`.toLocaleLowerCase().includes(q));
+    const filtered=source.filter(m=>(q || viewMode!=="active" || inGroup(m))&&(!q||`${m.title||""}\n${previewOf(m)}\n${groupName(m.groupId||DEFAULT_GROUP)}`.toLocaleLowerCase().includes(q)||(window._fullSearchIds&&window._fullSearchIds.has(m.id))));
     if(!filtered.length){listEl.innerHTML=`<div class="empty-list">${q?"لا توجد نتائج مطابقة.":"لا توجد عناصر في هذا القسم."}</div>`}
-    else listEl.innerHTML=filtered.map(m=>`<div class="conversation ${m.id===selectedId?"active":""}" data-id="${escapeHtml(m.id)}" draggable="${reorderMode&&!q&&viewMode==="active"?"true":"false"}"><div class="avatar">✉</div><div class="conversation-info"><h3>${escapeHtml(m.title)}</h3><p>${escapeHtml(previewOf(m) || (hasImgs(m) ? "📷 صورة مرفقة" : "بدون نص"))}</p></div><time>${escapeHtml(dateText(m.updatedAt||m.createdAt))}</time>${reorderMode&&!q?`<div class="move-btns"><button type="button" data-move="-1" aria-label="تحريك لأعلى">▲</button><button type="button" data-move="1" aria-label="تحريك لأسفل">▼</button></div>`:""}</div>`).join("");
+    else listEl.innerHTML=filtered.map(m=>`<div class="conversation ${m.id===selectedId?"active":""}" data-id="${escapeHtml(m.id)}" draggable="${reorderMode&&!q&&viewMode==="active"?"true":"false"}"><div class="avatar">✉</div><div class="conversation-info"><h3>${m.pinned?"📌 ":""}${escapeHtml(m.title)}</h3><p>${q?escapeHtml(groupName(m.groupId||DEFAULT_GROUP))+" · ":""}${escapeHtml(previewOf(m) || (hasImgs(m) ? "📷 صورة مرفقة" : "بدون نص"))}</p></div><time>${escapeHtml(dateText(m.updatedAt||m.createdAt))}</time>${reorderMode&&!q?`<div class="move-btns"><button type="button" data-move="-1" aria-label="تحريك لأعلى">▲</button><button type="button" data-move="1" aria-label="تحريك لأسفل">▼</button></div>`:""}</div>`).join("");
+    if(q && !window._fullSearchRunning){
+      window._fullSearchRunning=true;
+      Promise.all(source.filter(m=>q||viewMode!=="active"||inGroup(m)).map(async m=>{const b=await getBody(m);return {m,text:(b?.content||"").toLocaleLowerCase()};})).then(rows=>{
+        const ids=new Set(rows.filter(x=>`${x.m.title||""}\n${x.text}\n${groupName(x.m.groupId||DEFAULT_GROUP)}`.toLocaleLowerCase().includes(q)).map(x=>x.m.id));
+        window._fullSearchIds=ids; render();
+      }).finally(()=>{window._fullSearchRunning=false;});
+    }
+    if(q && window._fullSearchIds) { /* body matches are merged below */ }
     listEl.querySelectorAll(".conversation").forEach(el=>el.addEventListener("click",()=>{
       if(viewMode==="trash"){restoreTrash(el.dataset.id);return}
       if(viewMode==="archive"){const m=messages.find(x=>x.id===el.dataset.id);if(m){selectedId=m.id;showMessage()}return}
@@ -369,7 +379,7 @@
   });
   $("newBtn").addEventListener("click",openNew);$("welcomeNewBtn").addEventListener("click",openNew);
   $("closeDialog").addEventListener("click",closeDialog);$("cancelBtn").addEventListener("click",closeDialog);
-  $("searchInput").addEventListener("input",render);
+  $("searchInput").addEventListener("input",()=>{window._fullSearchIds=null;window._fullSearchRunning=false;render()});
   $("messageForm").addEventListener("submit",async e=>{
     e.preventDefault();const title=$("messageTitle").value.trim(),textContent=$("messageContent").value.trim(),videoUrl=$("messageVideoUrl").value.trim(),fileUrl=$("messageFileUrl").value.trim();
     const videoId=videoUrl?driveFileId(videoUrl):"",fileId=fileUrl?driveFileId(fileUrl):"";
@@ -400,10 +410,17 @@
       messageMenuBtn.setAttribute("aria-expanded", "false");
     }
   });
-  ["copyBtn", "shareBtn", "editBtn", "trashBtn", "archiveBtn", "copyToGroupBtn"].forEach(id => $(id).addEventListener("click", () => {
+  ["pinBtn", "copyBtn", "shareBtn", "editBtn", "trashBtn", "archiveBtn", "copyToGroupBtn"].forEach(id => $(id).addEventListener("click", () => {
     messageActionsMenu.classList.add("hidden");
     messageMenuBtn.setAttribute("aria-expanded", "false");
   }));
+  $("pinBtn").addEventListener("click",async()=>{
+    const m=messages.find(x=>x.id===selectedId);if(!m)return;if(blocked()){toast(OFFLINE_MSG);return;}
+    const next=!m.pinned;
+    if(next && messages.filter(x=>(x.groupId||DEFAULT_GROUP)===(m.groupId||DEFAULT_GROUP)&&x.pinned).length>=5){toast("يمكن تثبيت 5 رسائل كحد أقصى في الجروب");return;}
+    try{if(db)await db.ref("savedMessages/"+m.id+"/pinned").set(next);m.pinned=next;render();toast(next?"تم تثبيت الرسالة":"تم إلغاء تثبيت الرسالة");}
+    catch(e){toast("تعذر تحديث التثبيت")}
+  });
   $("copyBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح");return}try{await navigator.clipboard.writeText(extractVideo(b.content||"").text);toast("تم نسخ النص")}catch{toast("تعذر النسخ؛ حدد النص وانسخه يدويًا")}});
   $("shareBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح");return}try{if(navigator.share)await navigator.share({title:m.title,text:extractVideo(b.content||"").text+(extractVideo(b.content||"").url?"\n"+extractVideo(b.content||"").url:"")});else{await navigator.clipboard.writeText(m.title+"\n\n"+extractVideo(b.content||"").text+(extractVideo(b.content||"").url?"\n"+extractVideo(b.content||"").url:""));toast("تم نسخ الرسالة للمشاركة")}}catch{}});
   $("editBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح بدون إنترنت");return}editingId=m.id;pendingImages=readImages(b).slice();const video=extractVideo(b.content||"");$("dialogHeading").textContent="تعديل الرسالة";$("messageTitle").value=m.title||"";$("messageContent").value=video.text;$("messageVideoUrl").value=video.url;const f=JSON.parse(b.filesJson||"[]");$("messageFileUrl").value=f[0]?.url||"";$("notifyOnEdit").checked=false;$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()});
@@ -475,6 +492,26 @@
       }
     }));
   })();
+  // إعدادات العرض محفوظة على الجهاز
+  const prefKey="ii_preferences_v1";let prefs={theme:"light",font:"medium"};try{prefs={...prefs,...JSON.parse(localStorage.getItem(prefKey)||"{}")}}catch{}
+  function applyPrefs(){document.body.classList.toggle("dark-mode",prefs.theme==="dark");document.documentElement.style.setProperty("--app-font-size",prefs.font==="small"?"14px":prefs.font==="large"?"19px":"16px");$("themeBtn").textContent=prefs.theme==="dark"?"☀️":"🌙";}
+  function savePrefs(){localStorage.setItem(prefKey,JSON.stringify(prefs));applyPrefs()}
+  applyPrefs();
+  $("themeBtn").addEventListener("click",()=>{prefs.theme=prefs.theme==="dark"?"light":"dark";savePrefs()});
+  $("fontBtn").addEventListener("click",()=>{prefs.font=prefs.font==="small"?"medium":prefs.font==="medium"?"large":"small";savePrefs();toast("حجم الخط: "+(prefs.font==="small"?"صغير":prefs.font==="large"?"كبير":"متوسط"))});
+  // لون الجروب: انقر مطولاً/بالزر الأيمن على اسمه من القائمة لاختيار اللون.
+  $("groupList").addEventListener("contextmenu",async e=>{const b=e.target.closest("[data-gid]");if(!b)return;e.preventDefault();const g=allGroups().find(x=>x.id===b.dataset.gid);if(!g||blocked())return;const color=prompt("أدخل لون الجروب بصيغة HEX (مثال #168aad):",g.color||"#128c7e");if(!color||!/^#[0-9a-f]{6}$/i.test(color))return;try{if(db&&g.id!==DEFAULT_GROUP)await db.ref("savedGroups/"+g.id+"/color").set(color);g.color=color;if(!db||g.id===DEFAULT_GROUP)localStorage.setItem("ii_default_group_color",color);renderGroupMenu();toast("تم تحديث لون الجروب")}catch{toast("تعذر حفظ لون الجروب")}});
+  const defaultColor=localStorage.getItem("ii_default_group_color");if(defaultColor)allGroups()[0].color=defaultColor;
+  $("exportBtn").addEventListener("click",async()=>{
+    const btn=$("exportBtn");btn.disabled=true;toast("جارٍ تجهيز النسخة الاحتياطية...");
+    try{
+      const bundle={app:"Important Instructions",version:1,exportedAt:new Date().toISOString(),groups:allGroups(),messages:[],trash:trashItems};
+      for(const m of messages){const b=await getBody(m);bundle.messages.push({meta:m,body:b||{content:"",imagesJson:"[]",filesJson:"[]"}})}
+      const blob=new Blob([JSON.stringify(bundle)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="important-instructions-backup-"+new Date().toISOString().slice(0,10)+".json";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);toast("تم تصدير الرسائل والصور والبيانات")
+    }catch(e){console.error(e);toast("تعذر إنشاء النسخة الاحتياطية. تحقق من الاتصال لتحميل كل الصور")}
+    finally{btn.disabled=false}
+  });
+
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
     const hadController=!!navigator.serviceWorker.controller;let reloaded=false;
     navigator.serviceWorker.addEventListener("controllerchange",()=>{if(hadController&&!reloaded){reloaded=true;location.reload()}});
