@@ -288,11 +288,34 @@
     $("messageBubble").innerHTML=`<div class="message-text">${escapeHtml(video.text).replace(/\n/g,"<br>")}</div>${videoId?`<button type="button" class="drive-video-card" id="openDriveVideo"><span class="drive-video-thumb"><img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(videoId)}&sz=w640" alt="معاينة الفيديو" loading="lazy"><span class="drive-video-play">▶</span></span><span class="drive-video-caption"><strong>مشاهدة الفيديو</strong><small>يفتح داخل التطبيق من Google Drive</small></span></button>`:video.url?`<div class="message-text">رابط الفيديو غير صالح. استخدم رابط مشاركة من Google Drive.</div>`:""}${imgs.length?`<div class="message-images">${imgs.map((src,i)=>`<div class="message-image-item"><img src="${src}" alt="صورة داخل الرسالة" loading="lazy" data-zoom-image="${i}"><a href="${src}" download="important-image-${i+1}.jpg" class="image-download">تنزيل</a></div>`).join("")}</div>`:""}${renderDriveFiles(b.filesJson)}${b.stale?'<div class="message-text" style="opacity:.6;font-size:12px">نسخة محفوظة قد لا تكون الأحدث</div>':""}`;
     const videoBtn=$("openDriveVideo");if(videoBtn)videoBtn.addEventListener("click",()=>openDriveVideo(videoId));
   }
+  let imageZoomHistoryOpen = false;
+  function closeImageZoom(fromHistory=false){
+    const box=document.getElementById("imageZoomOverlay");
+    if(!box || !box.classList.contains("show"))return;
+    box.classList.remove("show");
+    if(!fromHistory && imageZoomHistoryOpen){
+      imageZoomHistoryOpen=false;
+      history.back();
+    }else if(fromHistory){imageZoomHistoryOpen=false;}
+  }
+  window.addEventListener("popstate",()=>{
+    const box=document.getElementById("imageZoomOverlay");
+    if(box?.classList.contains("show"))closeImageZoom(true);
+  });
   document.addEventListener("click",e=>{
-    const im=e.target.closest("[data-zoom-image]");if(!im)return;
-    let box=document.getElementById("imageZoomOverlay");
-    if(!box){box=document.createElement("div");box.id="imageZoomOverlay";box.className="image-zoom-overlay";box.innerHTML='<button type="button" aria-label="إغلاق">×</button><img alt="عرض الصورة بالحجم الكامل">';document.body.appendChild(box);box.addEventListener("click",()=>box.classList.remove("show"));}
-    box.querySelector("img").src=im.src;box.classList.add("show");
+    const im=e.target.closest("[data-zoom-image]");
+    if(im){
+      let box=document.getElementById("imageZoomOverlay");
+      if(!box){
+        box=document.createElement("div");box.id="imageZoomOverlay";box.className="image-zoom-overlay";
+        box.innerHTML='<button type="button" aria-label="إغلاق">×</button><img alt="عرض الصورة بالحجم الكامل">';
+        document.body.appendChild(box);
+        box.addEventListener("click",ev=>{if(ev.target===box || ev.target.closest("button"))closeImageZoom();});
+      }
+      box.querySelector("img").src=im.src;box.classList.add("show");
+      if(!imageZoomHistoryOpen){history.pushState({imageZoom:true},"");imageZoomHistoryOpen=true;}
+      return;
+    }
   });
   function showMessage(){
     const m=messages.find(x=>x.id===selectedId);if(!m){showWelcome();return}
