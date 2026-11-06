@@ -1,7 +1,7 @@
 (() => {
   const $ = id => document.getElementById(id);
   const listEl = $("conversationList"), dialog = $("messageDialog");
-  let messages = [], groups = [], trashItems = [], currentGroup = "instructions", reorderMode = false, selectedId = null, editingId = null, db = null, installPrompt = null, pendingImages = [], viewMode = "active", readConfirmations = {};
+  let messages = [], groups = [], trashItems = [], currentGroup = "instructions", reorderMode = false, selectedId = null, editingId = null, db = null, installPrompt = null, pendingImages = [], viewMode = "active";
   const isManager = () => sessionStorage.getItem("iiRole") === "manager";
   const readerName = () => localStorage.getItem("iiReaderName") || "مستخدم";
   function updateRoleUI(){ const b=$("roleBtn"); if(b)b.textContent=isManager()?"مدير":"مستخدم: "+readerName(); document.querySelectorAll(".manager-only").forEach(x=>x.classList.toggle("hidden",!isManager())); $("newBtn").classList.toggle("hidden",!isManager()); $("welcomeNewBtn").classList.toggle("hidden",!isManager()); $("reorderBtn").classList.toggle("hidden",!isManager()); $("groupAddBtn").classList.toggle("hidden",!isManager()); $("subGroupAddBtn").classList.toggle("hidden",!isManager()); $("confirmReadBtn").classList.toggle("hidden",isManager()); }
@@ -143,7 +143,6 @@
       setStatus("جارٍ الاتصال…");
       loadCache();
       db.ref(".info/connected").on("value",s=>{online=s.val()===true;setConnStatus()});
-      db.ref("readConfirmations").on("value",snap=>{readConfirmations=snap.val()||{};if(isManager()&&selectedId)showMessage();});
       db.ref("savedGroups").on("value",snap=>{
         const d=snap.val()||{};
         groups=Object.entries(d).map(([id,v])=>({id,name:String((v&&v.name)||""),parentId:(v&&v.parentId)||"",createdAt:(v&&v.createdAt)||0})).filter(g=>g.name).sort((a,b)=>a.createdAt-b.createdAt);
@@ -338,11 +337,6 @@
     $("welcome").classList.add("hidden");$("chatView").classList.remove("hidden");
     $("viewTitle").textContent=(m.pinned?"📌 ":"")+m.title;$("viewDate").textContent="تاريخ الحفظ: "+dateText(m.createdAt);
     $("copyBtn").textContent="نسخ النص";
-    const readKey=encodeURIComponent(readerName());
-    const readPath="readConfirmations/"+m.id+"/"+readKey;
-    if(!isManager() && db){db.ref(readPath).once("value").then(s=>{$("readConfirmStatus").textContent=s.exists()?"تم تأكيد القراءة في "+new Date(s.val().ts||s.val()).toLocaleString("ar-EG"):"لم يتم تأكيد القراءة بعد";});}
-    else if(isManager()){const rows=Object.values(readConfirmations[m.id]||{});$("readConfirmStatus").textContent=rows.length?"تأكيدات القراءة: "+rows.map(x=>x.name||"مستخدم").join("، "):"لم يؤكد أحد القراءة بعد";}
-    else $("readConfirmStatus").textContent="";
     const hit=peekBody(m);if(hit){paintBody(hit);return}
     $("messageBubble").innerHTML='<div class="message-text">جارٍ تحميل المحتوى…</div>';
     const id=m.id;
@@ -461,15 +455,6 @@
     if(pin!==(window.II_MANAGER_PIN||"1111")){toast("الرقم السري غير صحيح");return;}
     sessionStorage.setItem("iiRole","manager");updateRoleUI();render();toast("تم الدخول بوضع المدير");
   });
-  $("confirmReadBtn").addEventListener("click",async()=>{
-    const m=messages.find(x=>x.id===selectedId);if(!m)return;
-    const name=readerName();if(!name||name==="مستخدم"){const v=prompt("اكتب اسمك لتسجيل تأكيد القراءة");if(!v||!v.trim())return;localStorage.setItem("iiReaderName",v.trim().slice(0,60));}
-    const key=encodeURIComponent(readerName());
-    try{if(db){if(!online)throw new Error("offline");await db.ref("readConfirmations/"+m.id+"/"+key).set({name:readerName(),ts:Date.now()});}
-      else toast("تأكيد القراءة متاح عند الاتصال بقاعدة البيانات");
-      $("readConfirmStatus").textContent="تم تأكيد القراءة الآن";toast("تم تسجيل تأكيد القراءة");
-    }catch(e){toast("تعذر تسجيل تأكيد القراءة؛ تحقق من اتصال Firebase وقواعد البيانات");}
-  });
   $("pinBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m||!isManager())return;try{m.pinned=!m.pinned;if(db)await db.ref("savedMessages/"+m.id+"/pinned").set(m.pinned);else saveLocal();sortMsgs(messages);render();toast(m.pinned?"تم تثبيت التعليمات أعلى القائمة":"تم إلغاء التثبيت");}catch(e){m.pinned=!m.pinned;toast("تعذر تحديث التثبيت؛ حدّث قواعد Firebase");}});
   $("groupAddBtn").addEventListener("click",addGroup);
   $("subGroupAddBtn").addEventListener("click",addSubGroup);
@@ -517,7 +502,6 @@
     navigator.serviceWorker.addEventListener("controllerchange",()=>{if(hadController&&!reloaded){reloaded=true;location.reload()}});
     navigator.serviceWorker.register("sw.js").catch(console.warn);
   }
-  if(!localStorage.getItem("iiReaderName")){const n=prompt("اكتب اسمك لاستخدام تأكيد القراءة:");if(n&&n.trim())localStorage.setItem("iiReaderName",n.trim().slice(0,60));}
   updateRoleUI();
   initFirebase();
 })();
