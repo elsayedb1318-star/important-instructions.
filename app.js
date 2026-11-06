@@ -552,17 +552,22 @@
     }catch(e){console.error(e);toast(e.message||"تعذر إنشاء النسخة الاحتياطية. تحقق من الاتصال")}
     finally{btn.disabled=false}
   });
-  $("importBtn").addEventListener("click",()=>{
+  let pendingRestorePassword=null;
+  $("importBtn").addEventListener("click",async()=>{
     if(blocked()){toast(OFFLINE_MSG);return}
     if(!confirm("استعادة نسخة احتياطية ستستبدل البيانات الحالية في Firebase. يفضّل إنشاء نسخة احتياطية من الوضع الحالي أولاً. هل تريد المتابعة؟"))return;
+    // اطلب كلمة المرور قبل فتح نافذة اختيار الملف حتى تظهر بوضوح على الهاتف.
+    pendingRestorePassword=await askBackupPassword("أدخل الرقم السري لاستعادة النسخة الاحتياطية");
+    if(pendingRestorePassword===null)return;
     $("backupFileInput").click();
   });
   $("backupFileInput").addEventListener("change",async e=>{
-    const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;
+    const file=e.target.files&&e.target.files[0];e.target.value="";if(!file){pendingRestorePassword=null;return;}
+    const password=pendingRestorePassword;pendingRestorePassword=null;
     try{
       if(!db||!online)throw new Error("لاستعادة النسخة، افتح التطبيق مع الاتصال بقاعدة Firebase");
+      if(!password)throw new Error("يجب إدخال الرقم السري لاستعادة النسخة الاحتياطية");
       const envelope=JSON.parse(await file.text());
-      const password=await askBackupPassword("استعادة نسخة احتياطية");if(password===null)return;
       const bundle=await decryptBackup(envelope,password);
       if(!confirm("تم فك تشفير النسخة بنجاح. سيتم استبدال الرسائل والجروبات وسلة المحذوفات الحالية بالبيانات الموجودة في النسخة بتاريخ "+(bundle.exportedAt||"غير معروف")+". هل تؤكد الاستعادة؟"))return;
       const updates={savedMessages:null,savedBodies:null,savedGroups:null,deletedMessages:null};
