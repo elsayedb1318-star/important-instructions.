@@ -257,3 +257,15 @@ body.dark-mode .chat-title h2{color:#60a5fa}
 .font-color-control input{width:28px!important;height:28px!important;padding:0!important;margin:0!important;border:0!important;background:transparent;cursor:pointer}
 body.dark-mode .font-color-control{background:#263a35;color:#e5eeeb;border-color:#40554e}
 @media(max-width:760px){.font-color-control{font-size:11px!important;min-width:90px;padding:4px 6px}}
+
+/* Rich text editor: render formatting directly while editing, never expose color tags. */
+.message-editor{
+  display:block;width:100%;min-height:220px;max-height:48vh;overflow-y:auto;margin-top:8px;
+  border:1px solid #d5dfdb;border-radius:8px;padding:12px;outline-color:var(--green2);
+  background:#fff;color:var(--text);font:inherit;font-weight:700;line-height:1.8;
+  white-space:pre-wrap;overflow-wrap:anywhere;direction:auto;text-align:start;
+}
+.message-editor:focus{border-color:var(--green2);box-shadow:0 0 0 2px #128c7e22}
+.message-editor:empty:before{content:attr(data-placeholder);color:#8a9691;pointer-events:none}
+body.dark-mode .message-editor{background:#101d19;color:#f5faf7;border-color:#486057}
+body.dark-mode .message-editor:empty:before{color:#91a69d}

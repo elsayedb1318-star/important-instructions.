@@ -68,6 +68,30 @@
     out+=escapeHtml(value.slice(last)).replace(/\n/g,"<br>");
     return out;
   }
+  // محرر غني: يحفظ الألوان بصيغة متوافقة مع الرسائل القديمة دون إظهار أكوادها للمستخدم.
+  function setEditorContent(value){$("messageContent").innerHTML=renderColoredText(value||"");}
+  function editorStoredText(){
+    const root=$("messageContent");
+    function colorHex(value){
+      if(!value)return "";
+      const h=value.match(/^#([0-9a-f]{6})$/i);if(h)return "#"+h[1].toLowerCase();
+      const rgb=value.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+      return rgb?"#"+[rgb[1],rgb[2],rgb[3]].map(n=>Math.max(0,Math.min(255,+n)).toString(16).padStart(2,"0")).join(""):"";
+    }
+    function walk(node){
+      if(node.nodeType===Node.TEXT_NODE)return node.nodeValue||"";
+      if(node.nodeType!==Node.ELEMENT_NODE)return "";
+      const tag=node.tagName.toLowerCase();
+      if(tag==="br")return "\n";
+      let inner=Array.from(node.childNodes).map(walk).join("");
+      if(tag==="div"||tag==="p")inner+="\n";
+      const color=colorHex(node.getAttribute("data-text-color")||node.style.color||node.getAttribute("color"));
+      return color&&inner?`[color=${color}]${inner}[/color]`:inner;
+    }
+    let result=Array.from(root.childNodes).map(walk).join("");
+    return result.replace(/\n+$/,"").replace(/^\n+/,"");
+  }
+  function editorPlainText(){return editorStoredText().replace(/\[color=#[0-9a-f]{6}\]|\[\/color\]/gi,"");}
   const dateText = v => { try { return new Date(v).toLocaleDateString("ar-EG",{year:"numeric",month:"short",day:"numeric"}); } catch { return ""; } };
   function toast(s){ const t=$("toast");t.textContent=s;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2600); }
   function setStatus(s,good=false){$("syncStatus").textContent=s;$("syncStatus").style.color=good?"#c9f5df":"#f9d7c7";}
@@ -352,7 +376,7 @@
       else $("messageBubble").innerHTML='<div class="message-text">المحتوى غير متاح بدون إنترنت. افتح هذه الرسالة مرة واحدة أثناء الاتصال ليتم تخزينها.</div>';
     });
   }
-  function openNew(){editingId=null;pendingImages=[];$("dialogHeading").textContent="إضافة رسالة جديدة";$("messageTitle").value="";$("messageContent").value="";$("messageVideoUrl").value="";$("messageFileUrl").value="";$("notifyOnEdit").checked=false;$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()}
+  function openNew(){editingId=null;pendingImages=[];$("dialogHeading").textContent="إضافة رسالة جديدة";$("messageTitle").value="";setEditorContent("");$("messageVideoUrl").value="";$("messageFileUrl").value="";$("notifyOnEdit").checked=false;$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()}
   function closeDialog(){dialog.close()}
   async function persistMessage(m){
     if(blocked())throw new Error(OFFLINE_MSG);
@@ -392,7 +416,7 @@
   $("closeDialog").addEventListener("click",closeDialog);$("cancelBtn").addEventListener("click",closeDialog);
   $("searchInput").addEventListener("input",()=>{window._fullSearchIds=null;window._fullSearchRunning=false;render()});
   $("messageForm").addEventListener("submit",async e=>{
-    e.preventDefault();const title=$("messageTitle").value.trim(),textContent=$("messageContent").value.trim(),videoUrl=$("messageVideoUrl").value.trim(),fileUrl=$("messageFileUrl").value.trim();
+    e.preventDefault();const title=$("messageTitle").value.trim(),textContent=editorStoredText().trim(),videoUrl=$("messageVideoUrl").value.trim(),fileUrl=$("messageFileUrl").value.trim();
     const videoId=videoUrl?driveFileId(videoUrl):"",fileId=fileUrl?driveFileId(fileUrl):"";
     if(fileUrl&&!fileId){$("formError").textContent="رابط الملف غير صالح. استخدم رابط مشاركة Google Drive.";return}
     if(videoUrl&&!videoId){$("formError").textContent="رابط غير صالح. الصق رابط فيديو من Google Drive مثل drive.google.com/file/d/...";return}
@@ -434,7 +458,7 @@
   });
   $("copyBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح");return}try{await navigator.clipboard.writeText(extractVideo(b.content||"").text);toast("تم نسخ النص")}catch{toast("تعذر النسخ؛ حدد النص وانسخه يدويًا")}});
   $("shareBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح");return}try{if(navigator.share)await navigator.share({title:m.title,text:extractVideo(b.content||"").text+(extractVideo(b.content||"").url?"\n"+extractVideo(b.content||"").url:"")});else{await navigator.clipboard.writeText(m.title+"\n\n"+extractVideo(b.content||"").text+(extractVideo(b.content||"").url?"\n"+extractVideo(b.content||"").url:""));toast("تم نسخ الرسالة للمشاركة")}}catch{}});
-  $("editBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح بدون إنترنت");return}editingId=m.id;pendingImages=readImages(b).slice();const video=extractVideo(b.content||"");$("dialogHeading").textContent="تعديل الرسالة";$("messageTitle").value=m.title||"";$("messageContent").value=video.text;$("messageVideoUrl").value=video.url;const f=JSON.parse(b.filesJson||"[]");$("messageFileUrl").value=f[0]?.url||"";$("notifyOnEdit").checked=false;$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()});
+  $("editBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح بدون إنترنت");return}editingId=m.id;pendingImages=readImages(b).slice();const video=extractVideo(b.content||"");$("dialogHeading").textContent="تعديل الرسالة";$("messageTitle").value=m.title||"";setEditorContent(video.text);$("messageVideoUrl").value=video.url;const f=JSON.parse(b.filesJson||"[]");$("messageFileUrl").value=f[0]?.url||"";$("notifyOnEdit").checked=false;$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()});
   $("trashBtn").addEventListener("click",async()=>{
     const m=messages.find(x=>x.id===selectedId);if(!m)return;if(blocked()){toast(OFFLINE_MSG);return}
     if(!confirm("نقل الرسالة إلى سلة المحذوفات؟ يمكن استعادتها لاحقًا."))return;
@@ -470,54 +494,38 @@
   // استقبال نصوص من قائمة مشاركة Android/Chrome عند تثبيت التطبيق.
   const params=new URLSearchParams(location.search);
   const sharedText=params.get("text")||params.get("title")||"";
-  if(sharedText){setTimeout(()=>{openNew();$("messageContent").value=sharedText;history.replaceState({}, "", location.pathname)},350)}
+  if(sharedText){setTimeout(()=>{openNew();setEditorContent(sharedText);history.replaceState({}, "", location.pathname)},350)}
   window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;$("installBtn").classList.remove("hidden")});
   $("installBtn").addEventListener("click",async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$("installBtn").classList.add("hidden")});
   (function textTools(){
-    const ta=$("messageContent"),title=$("messageTitle"),bar=$("textTools");
-    const colorInput=$("messageTextColor");
-    let savedRange={start:0,end:0};
-    colorInput.addEventListener("pointerdown",()=>{savedRange={start:ta.selectionStart,end:ta.selectionEnd};});
-    colorInput.addEventListener("focus",()=>{savedRange={start:ta.selectionStart,end:ta.selectionEnd};});
-    colorInput.addEventListener("change",()=>{
-      const color=colorInput.value;
-      const start=Math.min(savedRange.start,ta.value.length),end=Math.min(savedRange.end,ta.value.length);
-      const before=ta.value.slice(0,start),selected=ta.value.slice(start,end),after=ta.value.slice(end);
-      const open=`[color=${color}]`,close="[/color]";
-      const replacement=selected?open+selected+close:open+close;
-      ta.value=before+replacement+after;ta.focus();
-      const cursor=selected?start+replacement.length:start+open.length;
-      ta.setSelectionRange(cursor,selected?cursor:cursor);
-      refresh();
-    });
-
-    const refresh=()=>{const has=ta.selectionStart!==ta.selectionEnd;bar.querySelectorAll('[data-t="cut"],[data-t="copy"],[data-t="del"]').forEach(b=>{b.disabled=!has})};
-    ["focus","input","select","keyup","touchend"].forEach(ev=>ta.addEventListener(ev,refresh));
-    document.addEventListener("selectionchange",()=>{if(document.activeElement===ta)refresh()});
-    setInterval(()=>{if(dialog.open)refresh()},250);
+    const editor=$("messageContent"),title=$("messageTitle"),bar=$("textTools"),colorInput=$("messageTextColor");
+    let savedRange=null;
+    function saveRange(){const sel=window.getSelection();if(sel&&sel.rangeCount&&editor.contains(sel.anchorNode))savedRange=sel.getRangeAt(0).cloneRange();}
+    function restoreRange(){editor.focus();const sel=window.getSelection();if(savedRange&&sel){sel.removeAllRanges();sel.addRange(savedRange);} }
+    function refresh(){const sel=window.getSelection();const has=!!(sel&&sel.rangeCount&&!sel.getRangeAt(0).collapsed&&editor.contains(sel.anchorNode));bar.querySelectorAll('[data-t="cut"],[data-t="copy"],[data-t="del"]').forEach(b=>b.disabled=!has);}
+    ["keyup","mouseup","touchend","input","focus"].forEach(ev=>editor.addEventListener(ev,()=>{saveRange();refresh()}));
+    document.addEventListener("selectionchange",()=>{if(document.activeElement===editor){saveRange();refresh()}});
+    editor.addEventListener("keydown",e=>{if(e.key==="Enter"){setTimeout(()=>{saveRange();refresh()},0)}});
+    editor.addEventListener("paste",e=>{e.preventDefault();const text=(e.clipboardData||window.clipboardData).getData("text/plain");document.execCommand("insertText",false,text);saveRange();refresh()});
+    colorInput.addEventListener("pointerdown",saveRange);colorInput.addEventListener("mousedown",saveRange);colorInput.addEventListener("focus",saveRange);
+    colorInput.addEventListener("change",applyColor);
+    function applyColor(){const color=colorInput.value.toLowerCase();restoreRange();document.execCommand("styleWithCSS",false,true);document.execCommand("foreColor",false,color);saveRange();refresh();}
     bar.querySelectorAll("button").forEach(b=>{
-      b.addEventListener("pointerdown",e=>e.preventDefault());
-      b.addEventListener("mousedown",e=>e.preventDefault());
+      b.addEventListener("pointerdown",e=>e.preventDefault());b.addEventListener("mousedown",e=>e.preventDefault());
       b.addEventListener("click",async()=>{
-        const t=b.dataset.t;
-        if(t==="all"){ta.focus();ta.setSelectionRange(0,ta.value.length);refresh();return}
-        const s=ta.selectionStart,e=ta.selectionEnd;if(s===e)return;
-        const text=ta.value.slice(s,e);
-        if(t==="copy"||t==="cut"){try{await navigator.clipboard.writeText(text)}catch{ta.focus();ta.setSelectionRange(s,e);try{document.execCommand("copy")}catch{}}}
-        if(t==="cut"||t==="del"){ta.setRangeText("",s,e,"end");ta.focus()}
+        const t=b.dataset.t;restoreRange();const sel=window.getSelection();
+        if(t==="all"){const r=document.createRange();r.selectNodeContents(editor);sel.removeAllRanges();sel.addRange(r);savedRange=r.cloneRange();refresh();return;}
+        if(!sel||!sel.rangeCount||sel.getRangeAt(0).collapsed)return;
+        const range=sel.getRangeAt(0);const text=range.toString();
+        if(t==="copy"||t==="cut"){try{await navigator.clipboard.writeText(text)}catch{document.execCommand("copy")}}
+        if(t==="cut"||t==="del"){range.deleteContents();sel.removeAllRanges();savedRange=null;}
         refresh();
       });
     });
-    const curH=()=>(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
-    let fullH=Math.max(window.innerHeight,curH());
-    window.addEventListener("resize",()=>{fullH=Math.max(fullH,curH())});
-    window.addEventListener("orientationchange",()=>setTimeout(()=>{fullH=curH()},400));
-    [ta,title].forEach(el=>el.addEventListener("click",()=>{
-      if(document.activeElement===el&&curH()>=fullH-80){
-        const s=el.selectionStart,e=el.selectionEnd;el.blur();
-        setTimeout(()=>{el.focus();try{el.setSelectionRange(s,e)}catch{}},0);
-      }
-    }));
+    const curH=()=>(window.visualViewport&&window.visualViewport.height)||window.innerHeight;let fullH=Math.max(window.innerHeight,curH());
+    window.addEventListener("resize",()=>{fullH=Math.max(fullH,curH())});window.addEventListener("orientationchange",()=>setTimeout(()=>{fullH=curH()},400));
+    [editor,title].forEach(el=>el.addEventListener("click",()=>{if(document.activeElement===el&&curH()>=fullH-80){const sel=window.getSelection();const r=sel&&sel.rangeCount?sel.getRangeAt(0).cloneRange():null;el.blur();setTimeout(()=>{el.focus();if(r){const s=window.getSelection();s.removeAllRanges();s.addRange(r)}},0)}}));
+    refresh();
   })();
   // إعدادات العرض محفوظة على الجهاز
   const prefKey="ii_preferences_v1";let prefs={theme:"light",font:"medium"};try{prefs={...prefs,...JSON.parse(localStorage.getItem(prefKey)||"{}")}}catch{}
