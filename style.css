@@ -246,3 +246,14 @@ body input::placeholder,
 body textarea::placeholder {
   font-weight: 600 !important;
 }
+
+/* Message text color picker and blue message titles */
+.conversation-info h3{color:#1677d2!important}
+.chat-title h2{color:#1677d2}
+body.dark-mode .conversation-info h3{color:#60a5fa!important}
+body.dark-mode .chat-title h2{color:#60a5fa}
+.font-color-control{display:flex!important;align-items:center;justify-content:center;gap:6px;flex:1;min-width:100px;margin:0!important;padding:5px 8px;border:1px solid #d8e0dc;border-radius:8px;background:#fff;color:var(--green);font-size:13px!important;cursor:pointer}
+.font-color-control span{white-space:nowrap}
+.font-color-control input{width:28px!important;height:28px!important;padding:0!important;margin:0!important;border:0!important;background:transparent;cursor:pointer}
+body.dark-mode .font-color-control{background:#263a35;color:#e5eeeb;border-color:#40554e}
+@media(max-width:760px){.font-color-control{font-size:11px!important;min-width:90px;padding:4px 6px}}

@@ -55,6 +55,19 @@
     }catch(e){toast("تعذر إنشاء المجلد الفرعي؛ حدّث قواعد Firebase")}
   }
   const escapeHtml = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  // يدعم ألوان النص المحفوظة بصيغة آمنة داخل محتوى الرسالة.
+  function renderColoredText(raw){
+    const value=String(raw??"");
+    const token=/\[color=(#[0-9a-fA-F]{6})\]([\s\S]*?)\[\/color\]/g;
+    let out="",last=0,match;
+    while((match=token.exec(value))){
+      out+=escapeHtml(value.slice(last,match.index)).replace(/\n/g,"<br>");
+      out+=`<span style="color:${match[1]}">${escapeHtml(match[2]).replace(/\n/g,"<br>")}</span>`;
+      last=token.lastIndex;
+    }
+    out+=escapeHtml(value.slice(last)).replace(/\n/g,"<br>");
+    return out;
+  }
   const dateText = v => { try { return new Date(v).toLocaleDateString("ar-EG",{year:"numeric",month:"short",day:"numeric"}); } catch { return ""; } };
   function toast(s){ const t=$("toast");t.textContent=s;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2600); }
   function setStatus(s,good=false){$("syncStatus").textContent=s;$("syncStatus").style.color=good?"#c9f5df":"#f9d7c7";}
@@ -72,7 +85,7 @@
   const lsGet=k=>{try{const r=localStorage.getItem("rasayeli_cache_"+k);return r?JSON.parse(r):undefined}catch{return undefined}};
   const cacheGet=k=>idbGet(k).then(v=>v!==undefined?v:lsGet(k)).catch(()=>lsGet(k));
   const cacheSet=(k,v)=>idbSet(k,v).catch(e=>{console.warn("idb save failed",e);try{localStorage.setItem("rasayeli_cache_"+k,JSON.stringify(v))}catch{}});
-  const makePreview = t => String(t || "").replace(/\s+/g, " ").trim().slice(0, 90);
+  const makePreview = t => String(t || "").replace(/\[color=#[0-9a-fA-F]{6}\]|\[\/color\]/g, "").replace(/\s+/g, " ").trim().slice(0, 90);
   const previewOf = m => typeof m.preview === "string" ? m.preview : makePreview(m.content);
   const hasImgs = m => typeof m.hasImages === "boolean" ? m.hasImages : readImages(m).length > 0;
   const bodyCache = new Map(), inflight = new Map();
@@ -293,7 +306,7 @@
   }
   function paintBody(b){
     const imgs=readImages(b), video=extractVideo(b.content||""), videoId=video.url?driveFileId(video.url):"";
-    $("messageBubble").innerHTML=`<div class="message-text">${escapeHtml(video.text).replace(/\n/g,"<br>")}</div>${videoId?`<button type="button" class="drive-video-card" id="openDriveVideo"><span class="drive-video-thumb"><img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(videoId)}&sz=w640" alt="معاينة الفيديو" loading="lazy"><span class="drive-video-play">▶</span></span><span class="drive-video-caption"><strong>مشاهدة الفيديو</strong><small>يفتح داخل التطبيق من Google Drive</small></span></button>`:video.url?`<div class="message-text">رابط الفيديو غير صالح. استخدم رابط مشاركة من Google Drive.</div>`:""}${imgs.length?`<div class="message-images">${imgs.map((src,i)=>`<div class="message-image-item"><img src="${src}" alt="صورة داخل الرسالة" loading="lazy" data-zoom-image="${i}"><a href="${src}" download="important-image-${i+1}.jpg" class="image-download">تنزيل</a></div>`).join("")}</div>`:""}${renderDriveFiles(b.filesJson)}${b.stale?'<div class="message-text" style="opacity:.6;font-size:12px">نسخة محفوظة قد لا تكون الأحدث</div>':""}`;
+    $("messageBubble").innerHTML=`<div class="message-text">${renderColoredText(video.text)}</div>${videoId?`<button type="button" class="drive-video-card" id="openDriveVideo"><span class="drive-video-thumb"><img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(videoId)}&sz=w640" alt="معاينة الفيديو" loading="lazy"><span class="drive-video-play">▶</span></span><span class="drive-video-caption"><strong>مشاهدة الفيديو</strong><small>يفتح داخل التطبيق من Google Drive</small></span></button>`:video.url?`<div class="message-text">رابط الفيديو غير صالح. استخدم رابط مشاركة من Google Drive.</div>`:""}${imgs.length?`<div class="message-images">${imgs.map((src,i)=>`<div class="message-image-item"><img src="${src}" alt="صورة داخل الرسالة" loading="lazy" data-zoom-image="${i}"><a href="${src}" download="important-image-${i+1}.jpg" class="image-download">تنزيل</a></div>`).join("")}</div>`:""}${renderDriveFiles(b.filesJson)}${b.stale?'<div class="message-text" style="opacity:.6;font-size:12px">نسخة محفوظة قد لا تكون الأحدث</div>':""}`;
     const videoBtn=$("openDriveVideo");if(videoBtn)videoBtn.addEventListener("click",()=>openDriveVideo(videoId));
   }
   let imageZoomHistoryOpen = false;
@@ -462,6 +475,22 @@
   $("installBtn").addEventListener("click",async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$("installBtn").classList.add("hidden")});
   (function textTools(){
     const ta=$("messageContent"),title=$("messageTitle"),bar=$("textTools");
+    const colorInput=$("messageTextColor");
+    let savedRange={start:0,end:0};
+    colorInput.addEventListener("pointerdown",()=>{savedRange={start:ta.selectionStart,end:ta.selectionEnd};});
+    colorInput.addEventListener("focus",()=>{savedRange={start:ta.selectionStart,end:ta.selectionEnd};});
+    colorInput.addEventListener("change",()=>{
+      const color=colorInput.value;
+      const start=Math.min(savedRange.start,ta.value.length),end=Math.min(savedRange.end,ta.value.length);
+      const before=ta.value.slice(0,start),selected=ta.value.slice(start,end),after=ta.value.slice(end);
+      const open=`[color=${color}]`,close="[/color]";
+      const replacement=selected?open+selected+close:open+close;
+      ta.value=before+replacement+after;ta.focus();
+      const cursor=selected?start+replacement.length:start+open.length;
+      ta.setSelectionRange(cursor,selected?cursor:cursor);
+      refresh();
+    });
+
     const refresh=()=>{const has=ta.selectionStart!==ta.selectionEnd;bar.querySelectorAll('[data-t="cut"],[data-t="copy"],[data-t="del"]').forEach(b=>{b.disabled=!has})};
     ["focus","input","select","keyup","touchend"].forEach(ev=>ta.addEventListener(ev,refresh));
     document.addEventListener("selectionchange",()=>{if(document.activeElement===ta)refresh()});
