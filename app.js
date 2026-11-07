@@ -502,24 +502,52 @@
     let savedRange=null,pendingColor=null;
     function rangeInsideEditor(r){return !!r&&editor.contains(r.commonAncestorContainer)}
     function saveRange(){const sel=window.getSelection();if(sel&&sel.rangeCount){const r=sel.getRangeAt(0);if(rangeInsideEditor(r))savedRange=r.cloneRange();}}
-    function restoreRange(){editor.focus();const sel=window.getSelection();if(savedRange&&rangeInsideEditor(savedRange)&&sel){sel.removeAllRanges();sel.addRange(savedRange);return true;}return false;}
+    // Keep a private copy before focusing the editor: on Android, focus can
+    // collapse the live selection and fire selectionchange before restoration.
+    function restoreRange(){
+      const snapshot=savedRange&&savedRange.cloneRange();
+      if(!snapshot||!rangeInsideEditor(snapshot))return false;
+      editor.focus({preventScroll:true});
+      const sel=window.getSelection();
+      if(!sel)return false;
+      sel.removeAllRanges();
+      sel.addRange(snapshot);
+      savedRange=snapshot.cloneRange();
+      return true;
+    }
     function refresh(){const sel=window.getSelection();const has=!!(sel&&sel.rangeCount&&!sel.getRangeAt(0).collapsed&&rangeInsideEditor(sel.getRangeAt(0)));bar.querySelectorAll('[data-t="cut"],[data-t="copy"],[data-t="del"]').forEach(b=>b.disabled=!has);}
     function placeCaretAfter(node){const r=document.createRange(),sel=window.getSelection();r.setStartAfter(node);r.collapse(true);sel.removeAllRanges();sel.addRange(r);savedRange=r.cloneRange();}
     function applyColor(){
       const color=colorInput.value.toLowerCase();
-      restoreRange();
+      // Use the saved selection, not the browser's current selection: native
+      // Android color pickers frequently clear the visible selection.
+      if(!restoreRange()){pendingColor=color;refresh();return;}
       const sel=window.getSelection();
       if(!sel||!sel.rangeCount){pendingColor=color;refresh();return;}
       const range=sel.getRangeAt(0);
       if(!rangeInsideEditor(range)){pendingColor=color;refresh();return;}
       if(range.collapsed){pendingColor=color;savedRange=range.cloneRange();toast("تم اختيار اللون؛ اكتب الآن");refresh();return;}
-      const span=document.createElement("span");span.style.color=color;span.setAttribute("data-text-color",color);
-      try{span.appendChild(range.extractContents());range.insertNode(span);placeCaretAfter(span);pendingColor=color;}catch(err){console.warn("تعذر تنسيق التحديد",err);pendingColor=color;}
+      const span=document.createElement("span");
+      span.style.color=color;
+      span.setAttribute("data-text-color",color);
+      try{
+        // extractContents preserves the selected text and any inline structure.
+        span.appendChild(range.extractContents());
+        range.insertNode(span);
+        const after=document.createRange();
+        after.setStartAfter(span);after.collapse(true);
+        sel.removeAllRanges();sel.addRange(after);
+        savedRange=after.cloneRange();
+        pendingColor=color;
+      }catch(err){
+        console.warn("تعذر تنسيق التحديد",err);
+        pendingColor=color;
+      }
       refresh();
     }
     // Android/Chrome may lose the selection when its native color picker opens.
     // Wrapping the saved Range directly is more reliable than execCommand(foreColor).
-    ["keyup","mouseup","touchend","input","focus"].forEach(ev=>editor.addEventListener(ev,()=>{saveRange();refresh()}));
+    ["keyup","mouseup","touchend","pointerup","input","focus"].forEach(ev=>editor.addEventListener(ev,()=>{saveRange();refresh()}));
     document.addEventListener("selectionchange",()=>{const sel=window.getSelection();if(sel&&sel.rangeCount&&rangeInsideEditor(sel.getRangeAt(0))){saveRange();refresh()}});
     editor.addEventListener("beforeinput",e=>{
       if(!pendingColor||e.inputType!=="insertText"||!e.data)return;
