@@ -58,14 +58,23 @@
   // يدعم ألوان النص المحفوظة بصيغة آمنة داخل محتوى الرسالة.
   function renderColoredText(raw){
     const value=String(raw??"");
-    const token=/\[color=(#[0-9a-fA-F]{6})\]([\s\S]*?)\[\/color\]/g;
+    // Parse nested legacy color tags; previous builds could save nested spans.
+    const token=/\[color=(#[0-9a-fA-F]{6})\]|\[\/color\]/gi;
+    const stack=[];
     let out="",last=0,match;
+    const append=text=>{
+      if(!text)return;
+      const safe=escapeHtml(text).replace(/\n/g,"<br>");
+      const color=stack.length?stack[stack.length-1]:"";
+      out+=color?`<span style="color:${color}">${safe}</span>`:safe;
+    };
     while((match=token.exec(value))){
-      out+=escapeHtml(value.slice(last,match.index)).replace(/\n/g,"<br>");
-      out+=`<span style="color:${match[1]}">${escapeHtml(match[2]).replace(/\n/g,"<br>")}</span>`;
+      append(value.slice(last,match.index));
+      if(match[1]) stack.push(match[1].toLowerCase());
+      else if(stack.length) stack.pop();
       last=token.lastIndex;
     }
-    out+=escapeHtml(value.slice(last)).replace(/\n/g,"<br>");
+    append(value.slice(last));
     return out;
   }
   // محرر غني: يحفظ الألوان بصيغة متوافقة مع الرسائل القديمة دون إظهار أكوادها للمستخدم.
