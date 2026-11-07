@@ -499,24 +499,46 @@
   $("installBtn").addEventListener("click",async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$("installBtn").classList.add("hidden")});
   (function textTools(){
     const editor=$("messageContent"),title=$("messageTitle"),bar=$("textTools"),colorInput=$("messageTextColor");
-    let savedRange=null;
-    function saveRange(){const sel=window.getSelection();if(sel&&sel.rangeCount&&editor.contains(sel.anchorNode))savedRange=sel.getRangeAt(0).cloneRange();}
-    function restoreRange(){editor.focus();const sel=window.getSelection();if(savedRange&&sel){sel.removeAllRanges();sel.addRange(savedRange);} }
-    function refresh(){const sel=window.getSelection();const has=!!(sel&&sel.rangeCount&&!sel.getRangeAt(0).collapsed&&editor.contains(sel.anchorNode));bar.querySelectorAll('[data-t="cut"],[data-t="copy"],[data-t="del"]').forEach(b=>b.disabled=!has);}
+    let savedRange=null,pendingColor=null;
+    function rangeInsideEditor(r){return !!r&&editor.contains(r.commonAncestorContainer)}
+    function saveRange(){const sel=window.getSelection();if(sel&&sel.rangeCount){const r=sel.getRangeAt(0);if(rangeInsideEditor(r))savedRange=r.cloneRange();}}
+    function restoreRange(){editor.focus();const sel=window.getSelection();if(savedRange&&rangeInsideEditor(savedRange)&&sel){sel.removeAllRanges();sel.addRange(savedRange);return true;}return false;}
+    function refresh(){const sel=window.getSelection();const has=!!(sel&&sel.rangeCount&&!sel.getRangeAt(0).collapsed&&rangeInsideEditor(sel.getRangeAt(0)));bar.querySelectorAll('[data-t="cut"],[data-t="copy"],[data-t="del"]').forEach(b=>b.disabled=!has);}
+    function placeCaretAfter(node){const r=document.createRange(),sel=window.getSelection();r.setStartAfter(node);r.collapse(true);sel.removeAllRanges();sel.addRange(r);savedRange=r.cloneRange();}
+    function applyColor(){
+      const color=colorInput.value.toLowerCase();
+      restoreRange();
+      const sel=window.getSelection();
+      if(!sel||!sel.rangeCount){pendingColor=color;refresh();return;}
+      const range=sel.getRangeAt(0);
+      if(!rangeInsideEditor(range)){pendingColor=color;refresh();return;}
+      if(range.collapsed){pendingColor=color;savedRange=range.cloneRange();toast("تم اختيار اللون؛ اكتب الآن");refresh();return;}
+      const span=document.createElement("span");span.style.color=color;span.setAttribute("data-text-color",color);
+      try{span.appendChild(range.extractContents());range.insertNode(span);placeCaretAfter(span);pendingColor=color;}catch(err){console.warn("تعذر تنسيق التحديد",err);pendingColor=color;}
+      refresh();
+    }
+    // Android/Chrome may lose the selection when its native color picker opens.
+    // Wrapping the saved Range directly is more reliable than execCommand(foreColor).
     ["keyup","mouseup","touchend","input","focus"].forEach(ev=>editor.addEventListener(ev,()=>{saveRange();refresh()}));
-    document.addEventListener("selectionchange",()=>{if(document.activeElement===editor){saveRange();refresh()}});
+    document.addEventListener("selectionchange",()=>{const sel=window.getSelection();if(sel&&sel.rangeCount&&rangeInsideEditor(sel.getRangeAt(0))){saveRange();refresh()}});
+    editor.addEventListener("beforeinput",e=>{
+      if(!pendingColor||e.inputType!=="insertText"||!e.data)return;
+      const sel=window.getSelection();if(!sel||!sel.rangeCount)return;
+      const r=sel.getRangeAt(0);if(!r.collapsed||!rangeInsideEditor(r))return;
+      e.preventDefault();
+      const span=document.createElement("span");span.style.color=pendingColor;span.setAttribute("data-text-color",pendingColor);span.textContent=e.data;
+      r.insertNode(span);placeCaretAfter(span);refresh();
+    });
     editor.addEventListener("keydown",e=>{if(e.key==="Enter"){setTimeout(()=>{saveRange();refresh()},0)}});
-    editor.addEventListener("paste",e=>{e.preventDefault();const text=(e.clipboardData||window.clipboardData).getData("text/plain");document.execCommand("insertText",false,text);saveRange();refresh()});
-    colorInput.addEventListener("pointerdown",saveRange);colorInput.addEventListener("mousedown",saveRange);colorInput.addEventListener("focus",saveRange);
-    colorInput.addEventListener("change",applyColor);
-    function applyColor(){const color=colorInput.value.toLowerCase();restoreRange();document.execCommand("styleWithCSS",false,true);document.execCommand("foreColor",false,color);saveRange();refresh();}
+    editor.addEventListener("paste",e=>{e.preventDefault();const text=(e.clipboardData||window.clipboardData).getData("text/plain");const sel=window.getSelection();if(!sel||!sel.rangeCount)return;const r=sel.getRangeAt(0);r.deleteContents();const node=document.createTextNode(text);if(pendingColor){const span=document.createElement("span");span.style.color=pendingColor;span.setAttribute("data-text-color",pendingColor);span.appendChild(node);r.insertNode(span);placeCaretAfter(span);}else{r.insertNode(node);placeCaretAfter(node);}refresh()});
+    colorInput.addEventListener("pointerdown",saveRange);colorInput.addEventListener("mousedown",saveRange);colorInput.addEventListener("focus",saveRange);colorInput.addEventListener("change",applyColor);
     bar.querySelectorAll("button").forEach(b=>{
       b.addEventListener("pointerdown",e=>e.preventDefault());b.addEventListener("mousedown",e=>e.preventDefault());
       b.addEventListener("click",async()=>{
         const t=b.dataset.t;restoreRange();const sel=window.getSelection();
         if(t==="all"){const r=document.createRange();r.selectNodeContents(editor);sel.removeAllRanges();sel.addRange(r);savedRange=r.cloneRange();refresh();return;}
         if(!sel||!sel.rangeCount||sel.getRangeAt(0).collapsed)return;
-        const range=sel.getRangeAt(0);const text=range.toString();
+        const range=sel.getRangeAt(0),text=range.toString();
         if(t==="copy"||t==="cut"){try{await navigator.clipboard.writeText(text)}catch{document.execCommand("copy")}}
         if(t==="cut"||t==="del"){range.deleteContents();sel.removeAllRanges();savedRange=null;}
         refresh();
