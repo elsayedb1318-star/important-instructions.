@@ -4,8 +4,9 @@
   document.head.appendChild(bulkStyle);
   const $ = id => document.getElementById(id);
   const listEl = $("conversationList"), dialog = $("messageDialog");
-  let messages = [], groups = [], trashItems = [], currentGroup = "instructions", reorderMode = false, selectedId = null, editingId = null, db = null, installPrompt = null, pendingImages = [], viewMode = "active", moveSelectMode = false;
+  let messages = [], groups = [], trashItems = [], currentGroup = "instructions", reorderMode = false, selectedId = null, editingId = null, db = null, installPrompt = null, pendingImages = [], viewMode = "active", moveSelectMode = false, selectedFromSubgroup = false;
   const selectedMoveIds = new Set();
+  const expandedSubgroupIds = new Set();
   const localKey = "rasayeli_local_messages_v1", localGroupsKey = "rasayeli_local_groups_v1", groupKey = "rasayeli_current_group_v1", DEFAULT_GROUP = "instructions";
   try { currentGroup = localStorage.getItem(groupKey) || DEFAULT_GROUP; } catch {}
   const startupParams = new URLSearchParams(location.search);
@@ -28,14 +29,9 @@
       welcomeBox.innerHTML = topGroups.map(g => `<button type="button" class="welcome-group ${g.id===currentGroup?"active":""}" data-welcome-gid="${escapeHtml(g.id)}"><span class="welcome-group-icon">▤</span><span>${escapeHtml(g.name)}</span><span class="welcome-group-arrow">←</span></button>`).join("");
       welcomeBox.querySelectorAll("[data-welcome-gid]").forEach(b => b.addEventListener("click", () => setGroup(b.dataset.welcomeGid)));
     }
-    const subBox = $("welcomeSubGroups");
-    if (subBox) {
-      const children = groups.filter(g => g.parentId === currentGroup);
-      subBox.innerHTML = children.length ? `<h4>المجلدات الفرعية داخل ${escapeHtml(groupName(currentGroup))}</h4>` + children.map(g => `<button type="button" class="welcome-group sub-group-card" data-welcome-gid="${escapeHtml(g.id)}"><span class="welcome-group-icon">📁</span><span>${escapeHtml(g.name)}</span><span class="welcome-group-arrow">←</span></button>`).join("") : "";
-      subBox.querySelectorAll("[data-welcome-gid]").forEach(b => b.addEventListener("click", () => setGroup(b.dataset.welcomeGid)));
-    }
   }
   function setGroup(id){
+    selectedFromSubgroup = false;
     currentGroup = id; try { localStorage.setItem(groupKey, id); } catch {}
     $("groupMenu").classList.add("hidden"); $("groupBtn").setAttribute("aria-expanded","false");
     const first = sortMsgs(messages.filter(m => (m.groupId || DEFAULT_GROUP) === currentGroup))[0];
@@ -239,8 +235,55 @@
       });
     }catch(e){console.error(e);messages=loadLocal();groups=loadLocalGroups();setStatus("إعداد قاعدة البيانات غير صحيح");render()}
   }
+  function renderSubfolderAccordion(){
+    const box = $("subfolderAccordion");
+    if(!box) return;
+    const children = groups.filter(g => g.parentId === currentGroup);
+    if(!children.length || viewMode === "trash"){
+      box.innerHTML = "";
+      box.classList.add("hidden");
+      return;
+    }
+    box.classList.remove("hidden");
+    box.innerHTML = children.map(g => {
+      const folderMessages = sortMsgs(messages.filter(m =>
+        (m.groupId || DEFAULT_GROUP) === g.id && !m.archived
+      ));
+      const expanded = expandedSubgroupIds.has(g.id);
+      return `<section class="subfolder-accordion-item">
+        <button type="button" class="subfolder-accordion-toggle" data-subfolder-toggle="${escapeHtml(g.id)}" aria-expanded="${expanded}">
+          <span class="subfolder-folder-icon">📁</span>
+          <span class="subfolder-folder-name">${escapeHtml(g.name)}</span>
+          <span class="subfolder-message-count">${folderMessages.length}</span>
+          <span class="subfolder-chevron">${expanded ? "⌃" : "⌄"}</span>
+        </button>
+        ${expanded ? `<div class="subfolder-message-list">${folderMessages.length
+          ? folderMessages.map(m => `<button type="button" class="subfolder-message-link ${selectedId===m.id?"active":""}" data-subfolder-message="${escapeHtml(m.id)}">${escapeHtml(m.title || "بدون عنوان")}</button>`).join("")
+          : `<div class="subfolder-empty">لا توجد رسائل داخل هذا المجلد</div>`}</div>` : ""}
+      </section>`;
+    }).join("");
+    box.querySelectorAll("[data-subfolder-toggle]").forEach(button => {
+      button.addEventListener("click", () => {
+        const id = button.dataset.subfolderToggle;
+        if(expandedSubgroupIds.has(id)) expandedSubgroupIds.delete(id);
+        else expandedSubgroupIds.add(id);
+        renderSubfolderAccordion();
+      });
+    });
+    box.querySelectorAll("[data-subfolder-message]").forEach(button => {
+      button.addEventListener("click", () => {
+        const id = button.dataset.subfolderMessage;
+        if(!messages.some(m => m.id === id)) return;
+        selectedFromSubgroup = true;
+        selectedId = id;
+        showMessage();
+        renderSubfolderAccordion();
+      });
+    });
+  }
   function render(){
     renderGroupMenu();
+    renderSubfolderAccordion();
     const q=$("searchInput").value.trim().toLocaleLowerCase();
     const source=activeMessages();
     const filtered=source.filter(m=>(q || viewMode!=="active" || inGroup(m))&&(!q||`${m.title||""}\n${previewOf(m)}\n${groupName(m.groupId||DEFAULT_GROUP)}`.toLocaleLowerCase().includes(q)||(window._fullSearchIds&&window._fullSearchIds.has(m.id))));
@@ -275,7 +318,7 @@
     listEl.querySelectorAll("[data-select-move]").forEach(ch=>ch.addEventListener("change",e=>{e.stopPropagation();const id=ch.dataset.selectMove;if(ch.checked)selectedMoveIds.add(id);else selectedMoveIds.delete(id);const b=$("moveSelectedMessagesBtn");if(b){b.textContent=`نقل المحدد (${selectedMoveIds.size})`;b.disabled=!selectedMoveIds.size;}ch.closest(".conversation")?.classList.toggle("selected-for-move",ch.checked)}));
     listEl.querySelectorAll("[data-move]").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();moveMessage(b.closest(".conversation").dataset.id,Number(b.dataset.move))}));
     if(selectedId && !messages.some(m=>m.id===selectedId)){selectedId=null;showWelcome()}
-    else if(selectedId) { const activeMessage=messages.find(m=>m.id===selectedId); if(activeMessage&&activeMessage.groupId&&activeMessage.groupId!==currentGroup){currentGroup=activeMessage.groupId;try{localStorage.setItem(groupKey,currentGroup)}catch{} renderGroupMenu();} showMessage(); }
+    else if(selectedId) { const activeMessage=messages.find(m=>m.id===selectedId); if(!selectedFromSubgroup && activeMessage&&activeMessage.groupId&&activeMessage.groupId!==currentGroup){currentGroup=activeMessage.groupId;try{localStorage.setItem(groupKey,currentGroup)}catch{} renderGroupMenu();renderSubfolderAccordion();} showMessage(); }
   }
   async function reorderDrop(sourceId,targetId){
     const arr=messages.filter(inGroup),from=arr.findIndex(x=>x.id===sourceId),to=arr.findIndex(x=>x.id===targetId);if(from<0||to<0)return;
@@ -310,7 +353,7 @@
       viewMode="active";currentGroup=item.groupId||DEFAULT_GROUP;selectedId=id;render();toast("تمت استعادة الرسالة");
     }catch(e){console.error(e);toast("تعذرت الاستعادة؛ حدّث قواعد Firebase")}
   }
-  function selectMessage(id){const m=messages.find(x=>x.id===id);if(m&&m.groupId&&m.groupId!==currentGroup){currentGroup=m.groupId;try{localStorage.setItem(groupKey,currentGroup)}catch{}}selectedId=id;render()}
+  function selectMessage(id){selectedFromSubgroup=false;const m=messages.find(x=>x.id===id);if(m&&m.groupId&&m.groupId!==currentGroup){currentGroup=m.groupId;try{localStorage.setItem(groupKey,currentGroup)}catch{}}selectedId=id;render()}
   function showWelcome(){$("welcome").classList.remove("hidden");$("chatView").classList.add("hidden")}
   function readImages(m){
     try { const v=m?.imagesJson; const arr=typeof v==="string"?JSON.parse(v||"[]"):[]; return Array.isArray(arr)?arr.filter(x=>typeof x==="string"&&x.startsWith("data:image/")):[]; } catch { return []; }

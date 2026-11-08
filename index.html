@@ -8,7 +8,25 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="style.css">\n  <style>#welcomeSubGroups:empty{display:none}#welcomeSubGroups h4{width:100%;margin:14px 0 6px;font-size:.95em;color:var(--text-color,inherit)}#welcomeSubGroups .sub-group-card{border-inline-start:4px solid #078675}</style>
+  <link rel="stylesheet" href="style.css">
+  <style#welcomeSubGroups:empty{display:none}#welcomeSubGroups h4{width:100%;margin:14px 0 6px;font-size:.95em;color:var(--text-color,inherit)}#welcomeSubGroups .sub-group-card{border-inline-start:4px solid #078675}</style>
+
+  <style>
+    .subfolder-accordion{margin:8px 0 10px;display:flex;flex-direction:column;gap:7px}
+    .subfolder-accordion.hidden{display:none}
+    .subfolder-accordion-item{border:1px solid var(--border,#d9e2df);border-radius:12px;overflow:hidden;background:var(--panel,#fff)}
+    .subfolder-accordion-toggle{width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;border:0;background:transparent;color:var(--text,inherit);font:inherit;font-weight:700;text-align:right;cursor:pointer}
+    .subfolder-folder-icon{font-size:21px;line-height:1}
+    .subfolder-folder-name{flex:1;min-width:0}
+    .subfolder-message-count{font-size:.82em;opacity:.7}
+    .subfolder-chevron{font-size:20px;color:#078675}
+    .subfolder-message-list{display:flex;flex-direction:column;border-top:1px solid var(--border,#e2e8e5);padding:4px 10px 8px}
+    .subfolder-message-link{padding:9px 10px;border:0;border-bottom:1px solid var(--border,#edf0ee);background:transparent;color:#1976c9;font:inherit;font-weight:700;text-align:right;cursor:pointer}
+    .subfolder-message-link:last-child{border-bottom:0}
+    .subfolder-message-link.active{background:rgba(7,134,117,.10);border-radius:8px}
+    .subfolder-empty{padding:10px;color:var(--muted,#78827e);font-size:.9em}
+  </style>
+
 </head>
 <body>
   <header class="topbar">
@@ -20,7 +38,8 @@
     <aside class="sidebar">
       <div class="sidebar-heading"><div class="group-wrap"><button id="groupBtn" type="button" class="group-btn" aria-expanded="false"><span class="group-btn-label">GROUP</span><span class="group-btn-arrow" aria-hidden="true">⌄</span></button><small id="groupCurrent" class="group-current">instructions</small></div><div class="heading-btns"><button id="reorderBtn" class="round-btn" title="ترتيب الرسائل">⇅</button><button id="newBtn" class="round-btn" title="إضافة رسالة جديدة">＋</button></div></div>
       <div id="groupMenu" class="group-menu hidden"><div id="groupList"></div><button type="button" id="groupAddBtn" class="group-item group-add">＋ ADD</button>
-      <button type="button" id="subGroupAddBtn" class="group-item group-add">＋ مجلد فرعي</button>\n      <button type="button" id="deleteGroupBtn" class="group-item group-add">🗑 حذف الجروب</button>
+      <button type="button" id="subGroupAddBtn" class="group-item group-add">＋ مجلد فرعي</button>
+      <button type="button" id="deleteGroupBtn" class="group-item group-add">🗑 حذف الجروب</button>
       <button type="button" id="archiveViewBtn" class="group-item group-add">عرض الأرشيف</button>
       <button type="button" id="trashViewBtn" class="group-item group-add">سلة المحذوفات</button></div>
       <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="ابحث في كل الرسائل والجروبات..."></label>
@@ -28,6 +47,7 @@
         <button id="toggleSelectMessagesBtn" type="button" class="group-item" style="flex:1;min-width:110px">☑ تحديد رسائل</button>
         <button id="moveSelectedMessagesBtn" type="button" class="group-item" style="flex:1;min-width:130px;display:none">نقل المحدد (0)</button>
       </div>
+      <div id="subfolderAccordion" class="subfolder-accordion hidden" aria-label="المجلدات الفرعية"></div>
       <div id="conversationList" class="conversation-list">
         <div class="empty-list">لا توجد رسائل بعد.<br>اضغط ＋ لإضافة أول رسالة.</div>
       </div>
@@ -40,7 +60,7 @@
         <h2>رسائلك المهمة</h2>
         <p>اختر محادثة من القائمة، أو أضف رسالة جديدة واحفظها للرجوع إليها لاحقًا.</p>
         <button id="welcomeNewBtn" class="primary-btn">＋ إضافة رسالة</button>
-        <div class="welcome-groups-wrap"><h3>الجروبات</h3><div id="welcomeGroups" class="welcome-groups"></div><div id="welcomeSubGroups" class="welcome-groups"></div></div>
+        <div class="welcome-groups-wrap"><h3>الجروبات</h3><div id="welcomeGroups" class="welcome-groups"></div></div>
       </div>
 
       <div id="chatView" class="chat-view hidden">
