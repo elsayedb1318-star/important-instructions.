@@ -494,6 +494,32 @@
       toast(archived?"تمت أرشفة الرسالة":"تم إلغاء الأرشفة");if(archived){selectedId=null;showWelcome();render()}
     }catch(e){toast("تعذر تحديث الأرشيف؛ حدّث قواعد Firebase")}
   });
+  // Password gate for bulk selection and moving. Only the SHA-256 digest is
+  // stored in the client; the password is never prefilled or shown on screen.
+  const MOVE_PASSWORD_SHA256 = "66287d81559001fd6c6cbe9476353d68a89e6de557f092d9c5903fbef3ad92f0";
+  async function requestMovePassword(){
+    return new Promise(resolve=>{
+      const overlay=document.createElement("div");
+      overlay.style.cssText="position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:18px";
+      const panel=document.createElement("form");
+      panel.style.cssText="width:min(100%,420px);background:var(--card-bg,#fff);color:var(--text-color,#222);border-radius:18px;padding:22px;box-shadow:0 12px 40px #0005;direction:rtl;font-family:inherit";
+      panel.innerHTML='<h3 style="margin:0 0 14px">تأكيد الرقم السري</h3><p style="margin:0 0 14px">أدخل الرقم السري للسماح بتحديد الرسائل ونقلها.</p><input id="movePasswordInput" type="password" inputmode="numeric" autocomplete="off" maxlength="32" placeholder="الرقم السري" style="box-sizing:border-box;width:100%;padding:13px;border:1px solid #999;border-radius:10px;background:transparent;color:inherit;font-size:18px;margin-bottom:18px"><div style="display:flex;gap:10px;justify-content:flex-start"><button type="submit" style="padding:10px 20px;border:0;border-radius:9px;background:#087f70;color:white;font-weight:bold">تأكيد</button><button type="button" data-cancel style="padding:10px 20px;border:1px solid #aaa;border-radius:9px;background:transparent;color:inherit">إلغاء</button></div><div data-error style="color:#d32f2f;margin-top:12px;min-height:1.2em"></div>';
+      overlay.appendChild(panel);document.body.appendChild(overlay);
+      const input=panel.querySelector("#movePasswordInput");
+      const finish=value=>{overlay.remove();resolve(value)};
+      panel.querySelector("[data-cancel]").addEventListener("click",()=>finish(false));
+      overlay.addEventListener("click",e=>{if(e.target===overlay)finish(false)});
+      panel.addEventListener("submit",async e=>{
+        e.preventDefault();
+        const bytes=new TextEncoder().encode(input.value);
+        const digest=await crypto.subtle.digest("SHA-256",bytes);
+        const actual=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,"0")).join("");
+        if(actual===MOVE_PASSWORD_SHA256)finish(true);
+        else{panel.querySelector("[data-error]").textContent="الرقم السري غير صحيح";input.value="";input.focus()}
+      });
+      setTimeout(()=>input.focus(),50);
+    });
+  }
   async function resolveGroupByName(rawName){
     const name=String(rawName||"").trim().toLocaleLowerCase();
     if(!name)return null;
@@ -501,6 +527,7 @@
   }
   async function moveMessagesToNamedGroup(ids){
     if(blocked()){toast(OFFLINE_MSG);return false;}
+    if(!(await requestMovePassword()))return false;
     const unique=[...new Set(ids)].filter(id=>messages.some(m=>m.id===id));
     if(!unique.length){toast("حدد رسالة واحدة على الأقل");return false;}
     const typed=prompt("اكتب اسم الجروب الذي تريد نقل الرسائل إليه:");
@@ -538,7 +565,8 @@
     const m=messages.find(x=>x.id===selectedId);if(!m)return;
     await moveMessagesToNamedGroup([m.id]);
   });
-  $("toggleSelectMessagesBtn").addEventListener("click",()=>{
+  $("toggleSelectMessagesBtn").addEventListener("click",async()=>{
+    if(!moveSelectMode && !(await requestMovePassword()))return;
     moveSelectMode=!moveSelectMode;
     if(!moveSelectMode)selectedMoveIds.clear();
     render();
