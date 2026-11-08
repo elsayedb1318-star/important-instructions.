@@ -1,7 +1,11 @@
 (() => {
+  const bulkStyle=document.createElement("style");
+  bulkStyle.textContent=`.move-select-check{width:22px;height:22px;flex:0 0 22px;accent-color:#078675;margin:0 4px}.conversation.selectable{cursor:pointer}.conversation.selected-for-move{outline:2px solid #078675;background:rgba(7,134,117,.10)}#bulkMoveBar button{border:1px solid #cbd5d1;border-radius:10px;padding:9px 12px;background:var(--panel,#fff);color:var(--text,inherit);font-weight:700}`;
+  document.head.appendChild(bulkStyle);
   const $ = id => document.getElementById(id);
   const listEl = $("conversationList"), dialog = $("messageDialog");
-  let messages = [], groups = [], trashItems = [], currentGroup = "instructions", reorderMode = false, selectedId = null, editingId = null, db = null, installPrompt = null, pendingImages = [], viewMode = "active";
+  let messages = [], groups = [], trashItems = [], currentGroup = "instructions", reorderMode = false, selectedId = null, editingId = null, db = null, installPrompt = null, pendingImages = [], viewMode = "active", moveSelectMode = false;
+  const selectedMoveIds = new Set();
   const localKey = "rasayeli_local_messages_v1", localGroupsKey = "rasayeli_local_groups_v1", groupKey = "rasayeli_current_group_v1", DEFAULT_GROUP = "instructions";
   try { currentGroup = localStorage.getItem(groupKey) || DEFAULT_GROUP; } catch {}
   const startupParams = new URLSearchParams(location.search);
@@ -234,7 +238,10 @@
     const source=activeMessages();
     const filtered=source.filter(m=>(q || viewMode!=="active" || inGroup(m))&&(!q||`${m.title||""}\n${previewOf(m)}\n${groupName(m.groupId||DEFAULT_GROUP)}`.toLocaleLowerCase().includes(q)||(window._fullSearchIds&&window._fullSearchIds.has(m.id))));
     if(!filtered.length){listEl.innerHTML=`<div class="empty-list">${q?"لا توجد نتائج مطابقة.":"لا توجد عناصر في هذا القسم."}</div>`}
-    else listEl.innerHTML=filtered.map(m=>`<div class="conversation ${m.id===selectedId?"active":""}" data-id="${escapeHtml(m.id)}" draggable="${reorderMode&&!q&&viewMode==="active"?"true":"false"}"><div class="avatar">✉</div><div class="conversation-info"><h3>${m.pinned?"📌 ":""}${escapeHtml(m.title)}</h3><p>${q?escapeHtml(groupName(m.groupId||DEFAULT_GROUP))+" · ":""}${escapeHtml(previewOf(m) || (hasImgs(m) ? "📷 صورة مرفقة" : "بدون نص"))}</p></div><time>${escapeHtml(dateText(m.updatedAt||m.createdAt))}</time>${reorderMode&&!q?`<div class="move-btns"><button type="button" data-move="-1" aria-label="تحريك لأعلى">▲</button><button type="button" data-move="1" aria-label="تحريك لأسفل">▼</button></div>`:""}</div>`).join("");
+    else listEl.innerHTML=filtered.map(m=>`<div class="conversation ${m.id===selectedId?"active":""} ${selectedMoveIds.has(m.id)?"selected-for-move":""} ${moveSelectMode?"selectable":""}" data-id="${escapeHtml(m.id)}" draggable="${reorderMode&&!q&&viewMode==="active"?"true":"false"}">${moveSelectMode?`<input class="move-select-check" type="checkbox" data-select-move="${escapeHtml(m.id)}" ${selectedMoveIds.has(m.id)?"checked":""} aria-label="تحديد ${escapeHtml(m.title)}">`:""}<div class="avatar">✉</div><div class="conversation-info"><h3>${m.pinned?"📌 ":""}${escapeHtml(m.title)}</h3><p>${q?escapeHtml(groupName(m.groupId||DEFAULT_GROUP))+" · ":""}${escapeHtml(previewOf(m) || (hasImgs(m) ? "📷 صورة مرفقة" : "بدون نص"))}</p></div><time>${escapeHtml(dateText(m.updatedAt||m.createdAt))}</time>${reorderMode&&!q?`<div class="move-btns"><button type="button" data-move="-1" aria-label="تحريك لأعلى">▲</button><button type="button" data-move="1" aria-label="تحريك لأسفل">▼</button></div>`:""}</div>`).join("");
+    const selectBtn=$("toggleSelectMessagesBtn"),moveBtn=$("moveSelectedMessagesBtn");
+    if(selectBtn){selectBtn.textContent=moveSelectMode?"إلغاء التحديد":"☑ تحديد رسائل";selectBtn.style.display=(viewMode==="active"||viewMode==="archive")?"":"none";}
+    if(moveBtn){moveBtn.style.display=moveSelectMode?"":"none";moveBtn.textContent=`نقل المحدد (${selectedMoveIds.size})`;moveBtn.disabled=!selectedMoveIds.size;}
     if(q && !window._fullSearchRunning){
       window._fullSearchRunning=true;
       Promise.all(source.filter(m=>q||viewMode!=="active"||inGroup(m)).map(async m=>{const b=await getBody(m);return {m,text:(b?.content||"").toLocaleLowerCase()};})).then(rows=>{
@@ -243,7 +250,8 @@
       }).finally(()=>{window._fullSearchRunning=false;});
     }
     if(q && window._fullSearchIds) { /* body matches are merged below */ }
-    listEl.querySelectorAll(".conversation").forEach(el=>el.addEventListener("click",()=>{
+    listEl.querySelectorAll(".conversation").forEach(el=>el.addEventListener("click",(ev)=>{
+      if(moveSelectMode && viewMode!=="trash") { if(ev.target.closest("button"))return; const id=el.dataset.id; if(selectedMoveIds.has(id))selectedMoveIds.delete(id);else selectedMoveIds.add(id); render(); return; }
       if(viewMode==="trash"){restoreTrash(el.dataset.id);return}
       if(viewMode==="archive"){const m=messages.find(x=>x.id===el.dataset.id);if(m){selectedId=m.id;showMessage()}return}
       selectMessage(el.dataset.id);
@@ -256,6 +264,8 @@
         el.addEventListener("drop",async e=>{e.preventDefault();const target=el.dataset.id;if(!dragged||dragged===target)return;await reorderDrop(dragged,target);dragged=null});
       });
     }
+    listEl.querySelectorAll("[data-select-move]").forEach(ch=>ch.addEventListener("click",e=>e.stopPropagation()));
+    listEl.querySelectorAll("[data-select-move]").forEach(ch=>ch.addEventListener("change",e=>{e.stopPropagation();const id=ch.dataset.selectMove;if(ch.checked)selectedMoveIds.add(id);else selectedMoveIds.delete(id);const b=$("moveSelectedMessagesBtn");if(b){b.textContent=`نقل المحدد (${selectedMoveIds.size})`;b.disabled=!selectedMoveIds.size;}ch.closest(".conversation")?.classList.toggle("selected-for-move",ch.checked)}));
     listEl.querySelectorAll("[data-move]").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();moveMessage(b.closest(".conversation").dataset.id,Number(b.dataset.move))}));
     if(selectedId && !messages.some(m=>m.id===selectedId)){selectedId=null;showWelcome()}
     else if(selectedId) { const activeMessage=messages.find(m=>m.id===selectedId); if(activeMessage&&activeMessage.groupId&&activeMessage.groupId!==currentGroup){currentGroup=activeMessage.groupId;try{localStorage.setItem(groupKey,currentGroup)}catch{} renderGroupMenu();} showMessage(); }
@@ -484,33 +494,57 @@
       toast(archived?"تمت أرشفة الرسالة":"تم إلغاء الأرشفة");if(archived){selectedId=null;showWelcome();render()}
     }catch(e){toast("تعذر تحديث الأرشيف؛ حدّث قواعد Firebase")}
   });
+  async function resolveGroupByName(rawName){
+    const name=String(rawName||"").trim().toLocaleLowerCase();
+    if(!name)return null;
+    return allGroups().find(g=>String(g.name||"").trim().toLocaleLowerCase()===name)||null;
+  }
+  async function moveMessagesToNamedGroup(ids){
+    if(blocked()){toast(OFFLINE_MSG);return false;}
+    const unique=[...new Set(ids)].filter(id=>messages.some(m=>m.id===id));
+    if(!unique.length){toast("حدد رسالة واحدة على الأقل");return false;}
+    const typed=prompt("اكتب اسم الجروب الذي تريد نقل الرسائل إليه:");
+    if(typed===null)return false;
+    const dest=await resolveGroupByName(typed);
+    if(!dest){toast("لم يتم العثور على جروب بهذا الاسم. اكتب الاسم كما يظهر في قائمة الجروبات.");return false;}
+    const toMove=unique.filter(id=>{const m=messages.find(x=>x.id===id);return (m.groupId||DEFAULT_GROUP)!==dest.id;});
+    if(!toMove.length){toast("كل الرسائل المحددة موجودة بالفعل في هذا الجروب");return false;}
+    if(!confirm(`سيتم نقل ${toMove.length} رسالة إلى جروب «${dest.name}» وإزالتها من جروباتها الحالية. هل تريد المتابعة؟`))return false;
+    try{
+      const updates={};
+      toMove.forEach((id,index)=>{
+        const m=messages.find(x=>x.id===id);
+        const order=Date.now()+index;
+        updates[`savedMessages/${id}/groupId`]=dest.id;
+        updates[`savedMessages/${id}/order`]=order;
+      });
+      if(db) await db.ref().update(updates);
+      toMove.forEach(id=>{const m=messages.find(x=>x.id===id);if(m){m.groupId=dest.id;m.order=updates[`savedMessages/${id}/order`];}});
+      if(!db) saveLocal();
+      currentGroup=dest.id;try{localStorage.setItem(groupKey,currentGroup)}catch{}
+      selectedMoveIds.clear();moveSelectMode=false;
+      selectedId=toMove[0]||null;
+      render();
+      if(selectedId)showMessage();else showWelcome();
+      toast(`تم نقل ${toMove.length} رسالة إلى ${dest.name}`);
+      return true;
+    }catch(e){
+      console.error("Bulk move failed",e);
+      toast("فشل النقل. تحقق من اتصال الإنترنت وصلاحيات الكتابة في savedMessages.");
+      return false;
+    }
+  }
   $("copyToGroupBtn").addEventListener("click",async()=>{
     const m=messages.find(x=>x.id===selectedId);if(!m)return;
-    if(blocked()){toast(OFFLINE_MSG);return;}
-    const choices=allGroups().map((g,i)=>`${i+1}- ${g.name}`).join("\\n");
-    const n=Number(prompt("اكتب رقم الجروب الذي تريد نقل الرسالة إليه:\\n"+choices));
-    const dest=allGroups()[n-1];if(!dest)return;
-    const oldGroupId=m.groupId||DEFAULT_GROUP;
-    if(dest.id===oldGroupId){toast("الرسالة موجودة بالفعل في هذا الجروب");return;}
-    if(!confirm("سيتم نقل الرسالة من «"+groupName(oldGroupId)+"» إلى «"+dest.name+"». هل تريد المتابعة؟"))return;
-    try{
-      const nextOrder=newOrder();
-      if(db){
-        await db.ref("savedMessages/"+m.id).update({groupId:dest.id,order:nextOrder});
-      }
-      m.groupId=dest.id;
-      m.order=nextOrder;
-      if(!db)saveLocal();
-      currentGroup=dest.id;
-      try{localStorage.setItem(groupKey,currentGroup)}catch{}
-      renderGroupMenu();
-      render();
-      showMessage();
-      toast("تم نقل الرسالة إلى "+dest.name);
-    }catch(e){
-      console.error(e);
-      toast("تعذر نقل الرسالة؛ تحقق من اتصال الإنترنت وصلاحيات Firebase");
-    }
+    await moveMessagesToNamedGroup([m.id]);
+  });
+  $("toggleSelectMessagesBtn").addEventListener("click",()=>{
+    moveSelectMode=!moveSelectMode;
+    if(!moveSelectMode)selectedMoveIds.clear();
+    render();
+  });
+  $("moveSelectedMessagesBtn").addEventListener("click",async()=>{
+    await moveMessagesToNamedGroup([...selectedMoveIds]);
   });
   $("groupAddBtn").addEventListener("click",addGroup);
   $("subGroupAddBtn").addEventListener("click",addSubGroup);
