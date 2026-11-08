@@ -486,14 +486,31 @@
   });
   $("copyToGroupBtn").addEventListener("click",async()=>{
     const m=messages.find(x=>x.id===selectedId);if(!m)return;
+    if(blocked()){toast(OFFLINE_MSG);return;}
     const choices=allGroups().map((g,i)=>`${i+1}- ${g.name}`).join("\\n");
-    const n=Number(prompt("اكتب رقم الجروب الذي تريد نسخ الرسالة إليه:\\n"+choices));const dest=allGroups()[n-1];if(!dest)return;
-    try{const b=await getBody(m);if(!b)throw new Error("body");
-      const id=db?db.ref("savedMessages").push().key:"local_"+Date.now();
-      const copy={...m,id,groupId:dest.id,createdAt:Date.now(),updatedAt:Date.now(),order:newOrder()};delete copy.archived;
-      await persistMessage({...copy,content:b.content||"",imagesJson:b.imagesJson||"[]",filesJson:b.filesJson||"[]",notifyOnEdit:false});
-      toast("تم نسخ الرسالة إلى "+dest.name);
-    }catch(e){console.error(e);toast("تعذر نسخ الرسالة")}
+    const n=Number(prompt("اكتب رقم الجروب الذي تريد نقل الرسالة إليه:\\n"+choices));
+    const dest=allGroups()[n-1];if(!dest)return;
+    const oldGroupId=m.groupId||DEFAULT_GROUP;
+    if(dest.id===oldGroupId){toast("الرسالة موجودة بالفعل في هذا الجروب");return;}
+    if(!confirm("سيتم نقل الرسالة من «"+groupName(oldGroupId)+"» إلى «"+dest.name+"». هل تريد المتابعة؟"))return;
+    try{
+      const nextOrder=newOrder();
+      if(db){
+        await db.ref("savedMessages/"+m.id).update({groupId:dest.id,order:nextOrder});
+      }
+      m.groupId=dest.id;
+      m.order=nextOrder;
+      if(!db)saveLocal();
+      currentGroup=dest.id;
+      try{localStorage.setItem(groupKey,currentGroup)}catch{}
+      renderGroupMenu();
+      render();
+      showMessage();
+      toast("تم نقل الرسالة إلى "+dest.name);
+    }catch(e){
+      console.error(e);
+      toast("تعذر نقل الرسالة؛ تحقق من اتصال الإنترنت وصلاحيات Firebase");
+    }
   });
   $("groupAddBtn").addEventListener("click",addGroup);
   $("subGroupAddBtn").addEventListener("click",addSubGroup);
