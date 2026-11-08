@@ -24,8 +24,15 @@
     box.querySelectorAll("[data-gid]").forEach(b => b.addEventListener("click", () => setGroup(b.dataset.gid)));
     const welcomeBox = $("welcomeGroups");
     if (welcomeBox) {
-      welcomeBox.innerHTML = allGroups().map(g => `<button type="button" class="welcome-group ${g.id===currentGroup?"active":""}" data-welcome-gid="${escapeHtml(g.id)}"><span class="welcome-group-icon">▤</span><span>${escapeHtml(g.name)}</span><span class="welcome-group-arrow">←</span></button>`).join("");
+      const topGroups = allGroups().filter(g => !g.parentId);
+      welcomeBox.innerHTML = topGroups.map(g => `<button type="button" class="welcome-group ${g.id===currentGroup?"active":""}" data-welcome-gid="${escapeHtml(g.id)}"><span class="welcome-group-icon">▤</span><span>${escapeHtml(g.name)}</span><span class="welcome-group-arrow">←</span></button>`).join("");
       welcomeBox.querySelectorAll("[data-welcome-gid]").forEach(b => b.addEventListener("click", () => setGroup(b.dataset.welcomeGid)));
+    }
+    const subBox = $("welcomeSubGroups");
+    if (subBox) {
+      const children = groups.filter(g => g.parentId === currentGroup);
+      subBox.innerHTML = children.length ? `<h4>المجلدات الفرعية داخل ${escapeHtml(groupName(currentGroup))}</h4>` + children.map(g => `<button type="button" class="welcome-group sub-group-card" data-welcome-gid="${escapeHtml(g.id)}"><span class="welcome-group-icon">📁</span><span>${escapeHtml(g.name)}</span><span class="welcome-group-arrow">←</span></button>`).join("") : "";
+      subBox.querySelectorAll("[data-welcome-gid]").forEach(b => b.addEventListener("click", () => setGroup(b.dataset.welcomeGid)));
     }
   }
   function setGroup(id){
@@ -53,8 +60,8 @@
     const raw=prompt("اسم المجلد الفرعي داخل: "+groupName(currentGroup));if(raw===null)return;
     const name=raw.trim().slice(0,60);if(!name)return;
     const g={name,parentId:currentGroup,createdAt:Date.now()};
-    try{if(db){const ref=db.ref("savedGroups").push();await ref.set(g);setGroup(ref.key)}
-      else{g.id="local_"+Date.now();groups.push(g);localStorage.setItem(localGroupsKey,JSON.stringify(groups));setGroup(g.id)}
+    try{if(db){const ref=db.ref("savedGroups").push();await ref.set(g);renderGroupMenu();render();showWelcome()}
+      else{g.id="local_"+Date.now();groups.push(g);localStorage.setItem(localGroupsKey,JSON.stringify(groups));renderGroupMenu();render();showWelcome()}
       toast("تم إنشاء المجلد الفرعي");
     }catch(e){toast("تعذر إنشاء المجلد الفرعي؛ حدّث قواعد Firebase")}
   }
@@ -561,6 +568,31 @@
       return false;
     }
   }
+
+  async function deleteCurrentGroup(){
+    if(blocked()){toast(OFFLINE_MSG);return}
+    const target=allGroups().find(g=>g.id===currentGroup);
+    if(!target || target.id===DEFAULT_GROUP){toast("لا يمكن حذف المجموعة الافتراضية");return}
+    if(!(await requestMovePassword()))return;
+    const hasMessages=messages.some(m=>(m.groupId||DEFAULT_GROUP)===target.id) || trashItems.some(m=>(m.groupId||DEFAULT_GROUP)===target.id);
+    const hasChildren=groups.some(g=>g.parentId===target.id);
+    if(hasMessages || hasChildren){
+      toast(hasMessages ? "لا يمكن حذف جروب يحتوي على رسائل. انقل الرسائل أو احذفها أولاً." : "لا يمكن حذف جروب يحتوي على مجلدات فرعية. احذف المجلدات الفرعية أولاً.");
+      return;
+    }
+    if(!confirm(`هل تريد حذف الجروب «${target.name}» نهائيًا؟`))return;
+    try{
+      if(db) await db.ref("savedGroups/"+target.id).remove();
+      groups=groups.filter(g=>g.id!==target.id);
+      try{localStorage.setItem(localGroupsKey,JSON.stringify(groups))}catch{}
+      currentGroup=target.parentId || DEFAULT_GROUP;
+      try{localStorage.setItem(groupKey,currentGroup)}catch{}
+      selectedId=null;selectedMoveIds.clear();moveSelectMode=false;
+      renderGroupMenu();render();showWelcome();
+      toast("تم حذف الجروب");
+    }catch(e){console.error("Delete group failed",e);toast("تعذر حذف الجروب. تحقق من اتصال الإنترنت وصلاحيات Firebase.")}
+  }
+
   $("copyToGroupBtn").addEventListener("click",async()=>{
     const m=messages.find(x=>x.id===selectedId);if(!m)return;
     await moveMessagesToNamedGroup([m.id]);
@@ -576,6 +608,7 @@
   });
   $("groupAddBtn").addEventListener("click",addGroup);
   $("subGroupAddBtn").addEventListener("click",addSubGroup);
+  $("deleteGroupBtn").addEventListener("click",deleteCurrentGroup);
   $("archiveViewBtn").addEventListener("click",()=>{viewMode="archive";selectedId=null;$("groupMenu").classList.add("hidden");render();showWelcome();toast("عرض الأرشيف")});
   $("trashViewBtn").addEventListener("click",()=>{viewMode="trash";selectedId=null;$("groupMenu").classList.add("hidden");render();showWelcome();toast("سلة المحذوفات: اضغط على العنصر لاستعادته")});
 
