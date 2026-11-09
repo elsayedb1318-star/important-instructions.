@@ -14,6 +14,10 @@
   const requestedMessageId = startupParams.get("messageId");
   if (requestedGroupId) currentGroup = requestedGroupId;
   const allGroups = () => [{id:DEFAULT_GROUP,name:DEFAULT_GROUP}, ...groups];
+  const groupSort = list => [...list].sort((a,b) =>
+    (String(a.name||"").trim().toLowerCase()==="maintenance" ? -1 : 0) -
+    (String(b.name||"").trim().toLowerCase()==="maintenance" ? -1 : 0)
+  );
   const groupName = id => (allGroups().find(g => g.id === id) || {name:"…"}).name;
   const activeMessages = () => viewMode === "trash" ? trashItems : messages.filter(m => viewMode === "archive" ? !!m.archived : !m.archived);
   const inGroup = m => (m.groupId || DEFAULT_GROUP) === currentGroup;
@@ -21,12 +25,24 @@
   function renderGroupMenu(){
     $("groupCurrent").textContent = groupName(currentGroup);
     const box = $("groupList");
-    box.innerHTML = allGroups().map(g => `<button type="button" class="group-item ${g.id===currentGroup?"active":""}" data-gid="${escapeHtml(g.id)}" style="padding-right:${g.parentId?30:12}px">${g.parentId?"↳ ":""}${escapeHtml(g.name)}</button>`).join("");
+    const topGroups = groupSort(allGroups().filter(g => !g.parentId));
+    box.innerHTML = topGroups.map(g => {
+      const children = groups.filter(child => child.parentId === g.id);
+      return `<div class="group-menu-parent">
+        <button type="button" class="group-item ${g.id===currentGroup?"active":""}" data-gid="${escapeHtml(g.id)}">${escapeHtml(g.name)}</button>
+        ${children.map(child => `<button type="button" class="group-item group-menu-child ${child.id===currentGroup?"active":""}" data-gid="${escapeHtml(child.id)}">↳ ${escapeHtml(child.name)}</button>`).join("")}
+      </div>`;
+    }).join("");
     box.querySelectorAll("[data-gid]").forEach(b => b.addEventListener("click", () => setGroup(b.dataset.gid)));
     const welcomeBox = $("welcomeGroups");
     if (welcomeBox) {
-      const topGroups = allGroups().filter(g => !g.parentId);
-      welcomeBox.innerHTML = topGroups.map(g => `<button type="button" class="welcome-group ${g.id===currentGroup?"active":""}" data-welcome-gid="${escapeHtml(g.id)}"><span class="welcome-group-icon">▤</span><span>${escapeHtml(g.name)}</span><span class="welcome-group-arrow">←</span></button>`).join("");
+      welcomeBox.innerHTML = topGroups.map(g => {
+        const children = groups.filter(child => child.parentId === g.id);
+        return `<div class="welcome-group-block">
+          <button type="button" class="welcome-group ${g.id===currentGroup?"active":""}" data-welcome-gid="${escapeHtml(g.id)}"><span class="welcome-group-icon">▤</span><span>${escapeHtml(g.name)}</span><span class="welcome-group-arrow">←</span></button>
+          ${children.length ? `<div class="welcome-subgroups">${children.map(child => `<button type="button" class="welcome-subgroup ${child.id===currentGroup?"active":""}" data-welcome-gid="${escapeHtml(child.id)}"><span class="welcome-subgroup-icon">📁</span><span>${escapeHtml(child.name)}</span><span class="welcome-group-arrow">←</span></button>`).join("")}</div>` : ""}
+        </div>`;
+      }).join("");
       welcomeBox.querySelectorAll("[data-welcome-gid]").forEach(b => b.addEventListener("click", () => setGroup(b.dataset.welcomeGid)));
     }
   }
