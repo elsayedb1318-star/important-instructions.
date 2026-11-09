@@ -30,8 +30,8 @@
 
   <style>
     .welcome-group-block{width:100%;display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
-    .welcome-subgroups{display:flex;flex-direction:column;gap:5px;margin-right:24px;padding-right:12px;border-right:3px solid #078675}
-    .welcome-subgroup{width:100%;display:flex;align-items:center;gap:10px;padding:12px 16px;border:1px solid var(--border,#dce5e1);border-radius:15px;background:var(--panel,#fff);color:var(--text,inherit);font:inherit;font-weight:700;text-align:right;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.04)}
+    .welcome-subgroups{display:flex;flex-direction:column;gap:5px;margin:0;padding:0;border:0;width:100%;align-items:stretch}
+    .welcome-subgroup{width:100%;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:11px 16px;border:1px solid var(--border,#dce5e1);border-radius:15px;background:var(--panel,#fff);color:var(--text,inherit);font:inherit;font-size:.88em;font-weight:700;text-align:right;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.04)}
     .welcome-subgroup-icon{font-size:20px}
     .welcome-subgroup span:nth-child(2){flex:1;min-width:0}
     .welcome-subgroup.active{border-color:#078675;background:rgba(7,134,117,.10);color:#08796b}
@@ -59,6 +59,7 @@
         <button id="toggleSelectMessagesBtn" type="button" class="group-item" style="flex:1;min-width:110px">☑ تحديد رسائل</button>
         <button id="moveSelectedMessagesBtn" type="button" class="group-item" style="flex:1;min-width:130px;display:none">نقل المحدد (0)</button>
       </div>
+      <div id="subfolderAccordion" class="subfolder-accordion hidden" aria-label="المجلدات الفرعية"></div>
       <div id="conversationList" class="conversation-list">
         <div class="empty-list">لا توجد رسائل بعد.<br>اضغط ＋ لإضافة أول رسالة.</div>
       </div>
