@@ -43,10 +43,10 @@
   <style>
     .group-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
     .group-top-controls{display:flex;align-items:center;justify-content:center;gap:7px;width:100%}
-    .home-btn{border:1px solid rgba(255,255,255,.28);border-radius:14px;padding:12px 15px;background:#078675;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer;min-height:48px;box-shadow:0 3px 10px rgba(0,0,0,.08)}
-    .home-btn:active{transform:scale(.97)}
+    .home-btn{width:var(--group-btn-size,144px);min-width:0;min-height:48px;height:48px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.28);border-radius:14px;padding:0;background:#078675;color:#fff;font:inherit;font-size:24px;font-weight:800;line-height:1;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.08)}
+    .group-top-controls #groupBtn,.group-top-controls #homeBtn{width:calc((100% - 7px)/2);height:48px;min-height:48px;box-sizing:border-box}\n    .home-btn:active{transform:scale(.97)}
     .home-btn:focus-visible{outline:2px solid currentColor;outline-offset:2px}
-    @media(max-width:520px){.group-top-controls{gap:5px}.home-btn{padding:10px 11px;min-height:44px;font-size:12px}}
+    @media(max-width:520px){.group-top-controls{gap:5px}.home-btn{height:48px;min-height:48px;font-size:24px}}
   </style>
 
 </head>
@@ -58,7 +58,7 @@
 
   <main class="app-shell">
     <aside class="sidebar">
-      <div class="sidebar-heading"><div class="group-wrap"><div class="group-top-controls"><button id="groupBtn" type="button" class="group-btn" aria-expanded="false"><span class="group-btn-label">GROUP</span><span class="group-btn-arrow" aria-hidden="true">⌄</span></button><button id="homeBtn" type="button" class="home-btn" title="الصفحة الرئيسية">HOME</button></div><small id="groupCurrent" class="group-current">instructions</small></div><div class="heading-btns"><button id="reorderBtn" class="round-btn" title="ترتيب الرسائل">⇅</button><button id="newBtn" class="round-btn" title="إضافة رسالة جديدة">＋</button></div></div>
+      <div class="sidebar-heading"><div class="group-wrap"><div class="group-top-controls"><button id="groupBtn" type="button" class="group-btn" aria-expanded="false"><span class="group-btn-label">GROUP</span><span class="group-btn-arrow" aria-hidden="true">⌄</span></button><button id="homeBtn" type="button" class="home-btn" title="الصفحة الرئيسية" aria-label="الصفحة الرئيسية">🏠</button></div><small id="groupCurrent" class="group-current">instructions</small></div><div class="heading-btns"><button id="reorderBtn" class="round-btn" title="ترتيب الرسائل">⇅</button><button id="newBtn" class="round-btn" title="إضافة رسالة جديدة">＋</button></div></div>
       <div id="groupMenu" class="group-menu hidden"><div id="groupList"></div><button type="button" id="groupAddBtn" class="group-item group-add">＋ ADD</button>
       <button type="button" id="subGroupAddBtn" class="group-item group-add">＋ مجلد فرعي</button>
       <button type="button" id="deleteGroupBtn" class="group-item group-add">🗑 حذف الجروب</button>
