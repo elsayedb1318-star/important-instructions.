@@ -255,7 +255,7 @@
     const box = $("subfolderAccordion");
     if(!box) return;
     const children = groups.filter(g => g.parentId === currentGroup);
-    if(!children.length || viewMode === "trash"){
+    if(true || !children.length || viewMode === "trash"){
       box.innerHTML = "";
       box.classList.add("hidden");
       return;
