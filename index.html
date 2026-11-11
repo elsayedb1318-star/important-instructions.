@@ -50,7 +50,8 @@
   </style>
 
 
-<style id="neutral-button-backgrounds-v34">
+<style id="neutral-button-backgrounds-v35">
+  /* Keep button labels readable after removing colored fills. */
   button,
   input[type="button"],
   input[type="submit"],
@@ -68,6 +69,33 @@
   .subfolder-message-link {
     background-color: transparent !important;
     background-image: none !important;
+    color: var(--text-color, var(--text, inherit)) !important;
+  }
+
+  /* Remove the tinted fill behind button borders while retaining a subtle border. */
+  button,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  .btn,
+  .group-btn,
+  .home-btn,
+  .group-item,
+  .welcome-group,
+  .welcome-subgroup,
+  .action-btn,
+  .toolbar button {
+    box-shadow: none !important;
+  }
+
+  .home-btn,
+  .group-btn {
+    border-color: transparent !important;
+  }
+
+  button:disabled,
+  input:disabled {
+    opacity: .55;
   }
 </style>
 
