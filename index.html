@@ -113,6 +113,93 @@
   }
 </style>
 
+
+<style id="pc-groups-vertical-v37">
+  /* Main welcome-page group cards: one full-width row per group on PC and mobile. */
+  #welcomeGroups.welcome-groups {
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+  #welcomeGroups > .welcome-group-block {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 auto !important;
+    margin: 0 0 8px !important;
+  }
+  #welcomeGroups .welcome-group {
+    display: flex !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  #welcomeGroups .welcome-subgroups {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+</style>
+
+
+<style id="groups-centered-v38">
+  /* Match the requested mobile layout: vertically stacked group rows. */
+  .welcome-groups-wrap {
+    width: 100% !important;
+    text-align: center !important;
+  }
+  .welcome-groups-wrap > h3 {
+    display: block !important;
+    width: 100% !important;
+    text-align: center !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  #welcomeGroups {
+    display: flex !important;
+    flex-flow: column nowrap !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  #welcomeGroups > .welcome-group-block {
+    display: flex !important;
+    flex: 0 0 100% !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 0 8px !important;
+  }
+  #welcomeGroups .welcome-group,
+  #welcomeGroups .welcome-subgroup {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  #welcomeGroups .welcome-subgroups {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+</style>
+
 </head>
 <body>
   <header class="topbar">
