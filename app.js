@@ -40,7 +40,7 @@
         const children = groups.filter(child => child.parentId === g.id);
         return `<div class="welcome-group-block">
           <button type="button" class="welcome-group ${g.id===currentGroup?"active":""}" data-welcome-gid="${escapeHtml(g.id)}"><span class="welcome-group-icon">▤</span><span>${escapeHtml(g.name)}</span><span class="welcome-group-arrow">←</span></button>
-          ${children.length ? `<div class="welcome-subgroups">${children.map(child => `<button type="button" class="welcome-subgroup ${child.id===currentGroup?"active":""}" data-welcome-gid="${escapeHtml(child.id)}"><span class="welcome-subgroup-icon">📁</span><span>${escapeHtml(child.name)}</span><span class="welcome-group-arrow">←</span></button>`).join("")}</div>` : ""}
+          
         </div>`;
       }).join("");
       welcomeBox.querySelectorAll("[data-welcome-gid]").forEach(b => b.addEventListener("click", () => setGroup(b.dataset.welcomeGid)));
