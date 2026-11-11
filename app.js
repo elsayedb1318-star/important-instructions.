@@ -255,7 +255,7 @@
     const box = $("subfolderAccordion");
     if(!box) return;
     const children = groups.filter(g => g.parentId === currentGroup);
-    if(true || !children.length || viewMode === "trash"){
+    if(!children.length || viewMode === "trash"){
       box.innerHTML = "";
       box.classList.add("hidden");
       return;
@@ -360,6 +360,9 @@
   $("groupBtn").addEventListener("click",e=>{e.stopPropagation();const menu=$("groupMenu");menu.classList.toggle("hidden");$("groupBtn").setAttribute("aria-expanded",String(!menu.classList.contains("hidden")))});
   $("homeBtn").addEventListener("click",()=>{selectedId=null;selectedFromSubgroup=false;showWelcome();render();});
   $("groupAddBtn").addEventListener("click",addGroup);
+  $("settingsBtn").addEventListener("click",async e=>{e.stopPropagation();const m=$("settingsMenu");if(!m.classList.contains("hidden")){m.classList.add("hidden");$("settingsBtn").setAttribute("aria-expanded","false");return}const pw=await askBackupPassword("Setting","أدخل الرقم السري");if(pw===null)return;m.classList.remove("hidden");$("settingsBtn").setAttribute("aria-expanded","true")});
+  $("settingsMenu").addEventListener("click",()=>{$("settingsMenu").classList.add("hidden");$("settingsBtn").setAttribute("aria-expanded","false")});
+  document.addEventListener("click",e=>{if(!e.target.closest(".settings-wrap")){$("settingsMenu").classList.add("hidden");$("settingsBtn").setAttribute("aria-expanded","false")}});
   document.addEventListener("click",e=>{if(!e.target.closest("#groupMenu")&&!e.target.closest("#groupBtn")){$("groupMenu").classList.add("hidden");$("groupBtn").setAttribute("aria-expanded","false")}});
   $("reorderBtn").addEventListener("click",()=>{reorderMode=!reorderMode;$("reorderBtn").classList.toggle("on",reorderMode);if(reorderMode&&$("searchInput").value.trim())toast("امسح البحث لتحريك الرسائل");render()});
   async function restoreTrash(id){
@@ -788,14 +791,15 @@
     return bundle;
   }
   // إدخال رقم النسخة الاحتياطية في حقل مخفي، دون وضع الرقم مسبقًا أو إظهاره على الشاشة.
-  function askBackupPassword(title){
+  async function pinHash(v){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("")}
+  function askBackupPassword(title,hintText){
     return new Promise(resolve=>{
       const overlay=document.createElement("div");
       overlay.style.cssText="position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:18px";
       const box=document.createElement("div");
       box.style.cssText="width:min(420px,100%);background:var(--panel,#fff);color:var(--text,#222);border-radius:20px;padding:22px;box-shadow:0 12px 40px rgba(0,0,0,.3)";
       const heading=document.createElement("h3");heading.textContent=title;heading.style.margin="0 0 16px";
-      const hint=document.createElement("p");hint.textContent="أدخل الرقم السري للنسخة الاحتياطية";hint.style.margin="0 0 12px";
+      const hint=document.createElement("p");hint.textContent=hintText||"أدخل الرقم السري للنسخة الاحتياطية";hint.style.margin="0 0 12px";
       const input=document.createElement("input");input.type="password";input.inputMode="numeric";input.autocomplete="new-password";input.placeholder="الرقم السري";input.style.cssText="box-sizing:border-box;width:100%;padding:13px;border:1px solid #999;border-radius:10px;background:var(--input-bg,#fff);color:var(--text,#222);font-size:20px;letter-spacing:5px;text-align:center";
       const error=document.createElement("p");error.style.cssText="min-height:20px;color:#d33;margin:8px 0";
       const actions=document.createElement("div");actions.style.cssText="display:flex;gap:10px;margin-top:12px";
@@ -803,7 +807,7 @@
       const cancel=document.createElement("button");cancel.type="button";cancel.textContent="إلغاء";cancel.style.cssText="flex:1;padding:12px;border:0;border-radius:10px;background:#888;color:white;font-size:16px";
       actions.append(ok,cancel);box.append(heading,hint,input,error,actions);overlay.append(box);document.body.append(overlay);
       let finished=false;function done(value){if(finished)return;finished=true;overlay.remove();resolve(value)}
-      function submit(){if(input.value!=="186186"){error.textContent="الرقم السري غير صحيح";input.value="";input.focus();return}done("186186")}
+      async function submit(){const v=input.value;if(await pinHash(v)!=="66287d81559001fd6c6cbe9476353d68a89e6de557f092d9c5903fbef3ad92f0"){error.textContent="الرقم السري غير صحيح";input.value="";input.focus();return}done(v)}
       ok.addEventListener("click",submit);cancel.addEventListener("click",()=>done(null));
       input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();submit()}if(e.key==="Escape")done(null)});
       overlay.addEventListener("click",e=>{if(e.target===overlay)done(null)});input.focus();
