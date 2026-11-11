@@ -358,6 +358,7 @@
     }catch(e){console.error(e);toast("تعذر حفظ الترتيب"+(e&&e.code?" ("+e.code+")":"")+". تحقق من صلاحيات قاعدة البيانات")}
   }
   $("groupBtn").addEventListener("click",e=>{e.stopPropagation();const menu=$("groupMenu");menu.classList.toggle("hidden");$("groupBtn").setAttribute("aria-expanded",String(!menu.classList.contains("hidden")))});
+  $("homeBtn").addEventListener("click",()=>{selectedId=null;selectedFromSubgroup=false;showWelcome();render();});
   $("groupAddBtn").addEventListener("click",addGroup);
   document.addEventListener("click",e=>{if(!e.target.closest("#groupMenu")&&!e.target.closest("#groupBtn")){$("groupMenu").classList.add("hidden");$("groupBtn").setAttribute("aria-expanded","false")}});
   $("reorderBtn").addEventListener("click",()=>{reorderMode=!reorderMode;$("reorderBtn").classList.toggle("on",reorderMode);if(reorderMode&&$("searchInput").value.trim())toast("امسح البحث لتحريك الرسائل");render()});
@@ -470,7 +471,7 @@
       meta.preview = makePreview(extractVideo(content).text); meta.hasImages = readImages({imagesJson}).length > 0;
       const isEdit = messages.some(x => x.id === id);
       const noticeTs = Date.now();
-      const shouldNotify = !isEdit || !!m.notifyOnEdit;
+      const shouldNotify = !!m.notifyOnEdit;
       const noticeRef = shouldNotify ? db.ref("jigNotifications").push() : null;
       const updates = {
         ["savedMessages/"+id]: meta,

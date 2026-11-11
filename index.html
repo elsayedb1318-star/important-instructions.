@@ -39,6 +39,16 @@
     .group-menu-child{padding-right:28px!important;opacity:.92}
   </style>
 
+
+  <style>
+    .group-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+    .group-top-controls{display:flex;align-items:center;justify-content:center;gap:7px;width:100%}
+    .home-btn{border:1px solid rgba(255,255,255,.28);border-radius:14px;padding:12px 15px;background:#078675;color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer;min-height:48px;box-shadow:0 3px 10px rgba(0,0,0,.08)}
+    .home-btn:active{transform:scale(.97)}
+    .home-btn:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+    @media(max-width:520px){.group-top-controls{gap:5px}.home-btn{padding:10px 11px;min-height:44px;font-size:12px}}
+  </style>
+
 </head>
 <body>
   <header class="topbar">
@@ -48,7 +58,7 @@
 
   <main class="app-shell">
     <aside class="sidebar">
-      <div class="sidebar-heading"><div class="group-wrap"><button id="groupBtn" type="button" class="group-btn" aria-expanded="false"><span class="group-btn-label">GROUP</span><span class="group-btn-arrow" aria-hidden="true">⌄</span></button><small id="groupCurrent" class="group-current">instructions</small></div><div class="heading-btns"><button id="reorderBtn" class="round-btn" title="ترتيب الرسائل">⇅</button><button id="newBtn" class="round-btn" title="إضافة رسالة جديدة">＋</button></div></div>
+      <div class="sidebar-heading"><div class="group-wrap"><div class="group-top-controls"><button id="groupBtn" type="button" class="group-btn" aria-expanded="false"><span class="group-btn-label">GROUP</span><span class="group-btn-arrow" aria-hidden="true">⌄</span></button><button id="homeBtn" type="button" class="home-btn" title="الصفحة الرئيسية">HOME</button></div><small id="groupCurrent" class="group-current">instructions</small></div><div class="heading-btns"><button id="reorderBtn" class="round-btn" title="ترتيب الرسائل">⇅</button><button id="newBtn" class="round-btn" title="إضافة رسالة جديدة">＋</button></div></div>
       <div id="groupMenu" class="group-menu hidden"><div id="groupList"></div><button type="button" id="groupAddBtn" class="group-item group-add">＋ ADD</button>
       <button type="button" id="subGroupAddBtn" class="group-item group-add">＋ مجلد فرعي</button>
       <button type="button" id="deleteGroupBtn" class="group-item group-add">🗑 حذف الجروب</button>
@@ -112,7 +122,7 @@
       <div id="textTools" class="text-tools"><button type="button" data-t="cut">قص</button><button type="button" data-t="copy">نسخ</button><button type="button" data-t="all">اختيار الكل</button><button type="button" data-t="del">حذف</button><label class="font-color-control" title="اختيار لون الخط"><span>🎨 لون الخط</span><input id="messageTextColor" type="color" value="#e53935" aria-label="اختيار لون الخط"></label></div>
       <label>رابط ملف PDF أو مستند Google Drive<input id="messageFileUrl" type="url" inputmode="url" placeholder="الصق رابط PDF أو ملف من Google Drive"></label>
       <div class="dialog-note">ارفع الملف على Google Drive، واجعل المشاركة «أي شخص لديه الرابط – مشاهد»، ثم الصق الرابط هنا. يمكن فتح PDF داخل التطبيق وتنزيله.</div>
-      <label class="notify-edit-label"><input id="notifyOnEdit" type="checkbox"> إرسال إشعار إلى JIG SEARCH عند تعديل هذه الرسالة</label>
+      <label class="notify-edit-label"><input id="notifyOnEdit" type="checkbox"> إرسال إشعار إلى JIG SEARCH</label>
       <label>رابط فيديو Google Drive<input id="messageVideoUrl" type="url" inputmode="url" placeholder="الصق رابط مشاركة الفيديو من Google Drive"></label>
       <div class="dialog-note">اجعل مشاركة الفيديو في Google Drive على: أي شخص لديه الرابط – مشاهد. سيظهر الفيديو داخل التطبيق دون الانتقال إلى Drive.</div>
       <label class="image-picker-label">إضافة صور (يمكن اختيار أكثر من صورة)<input id="messageImages" type="file" accept="image/*" multiple></label>
