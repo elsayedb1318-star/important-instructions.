@@ -212,10 +212,10 @@ body.dark-mode .settings-menu{background:#1f2a2e}
 #viewDate{display:block!important;text-align:center!important}
 </style>
 <style id="title-align-right-v1">
-.chat-title{width:100%!important;text-align:right!important;direction:rtl!important}
-.chat-title-row{direction:rtl!important;display:flex!important;justify-content:flex-start!important;align-items:center!important;gap:8px}
-#viewTitle{direction:rtl!important;text-align:right!important;unicode-bidi:plaintext}
-#viewDate{display:block!important;direction:rtl!important;text-align:right!important}
+body .chat-view .chat-header .chat-title{flex:1 1 auto!important;width:100%!important;min-width:0!important;text-align:right!important}
+body .chat-view .chat-header .chat-title-row{display:flex!important;width:100%!important;direction:ltr!important;flex-direction:row-reverse!important;justify-content:flex-start!important;align-items:center!important;gap:8px!important}
+body .chat-view .chat-header #viewTitle{flex:0 1 auto!important;min-width:0!important;direction:rtl!important;text-align:right!important;unicode-bidi:isolate!important;margin:0!important}
+body .chat-view .chat-header #viewDate{display:block!important;width:100%!important;direction:rtl!important;text-align:right!important}
 </style>
 </head>
 <body>
@@ -266,7 +266,6 @@ body.dark-mode .settings-menu{background:#1f2a2e}
                 </div>
               </div>
             </div>
-            <small id="viewDate"></small>
           </div>
         </div>
         <div class="message-area">

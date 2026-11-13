@@ -456,7 +456,7 @@
   function showMessage(){
     const m=messages.find(x=>x.id===selectedId);if(!m){showWelcome();return}
     $("welcome").classList.add("hidden");$("chatView").classList.remove("hidden");
-    $("viewTitle").textContent=m.title;$("viewDate").textContent="تاريخ الحفظ: "+dateText(m.createdAt);
+    $("viewTitle").textContent=m.title;
     $("copyBtn").textContent="نسخ النص";
     const hit=peekBody(m);if(hit){paintBody(hit);return}
     $("messageBubble").innerHTML='<div class="message-text">جارٍ تحميل المحتوى…</div>';
