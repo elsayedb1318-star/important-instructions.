@@ -549,7 +549,8 @@
   $("copyBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح");return}try{await navigator.clipboard.writeText(extractVideo(b.content||"").text);toast("تم نسخ النص")}catch{toast("تعذر النسخ؛ حدد النص وانسخه يدويًا")}});
   $("shareBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح");return}
     const v=extractVideo(b.content||"");const sig=m.sender&&String(m.sender).trim()?"\n\n✍ "+String(m.sender).trim():"";
-    const text=(m.title||"")+"\n\n"+v.text+(v.url?"\n"+v.url:"")+sig;
+    const clean=v.text.replace(/\[color=#[0-9a-fA-F]{6}\]|\[\/color\]/gi,"");
+    const text=(m.title||"")+"\n\n"+clean+(v.url?"\n"+v.url:"")+sig;
     try{
       const imgs=readImages(b);let files=[];
       for(let k=0;k<imgs.length;k++){try{const r=await fetch(imgs[k]);const bl=await r.blob();files.push(new File([bl],"image-"+(k+1)+".jpg",{type:bl.type||"image/jpeg"}))}catch{}}
