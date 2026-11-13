@@ -217,6 +217,10 @@ body .chat-view .chat-header .chat-title-row{display:flex!important;width:100%!i
 body .chat-view .chat-header #viewTitle{flex:0 1 auto!important;min-width:0!important;direction:rtl!important;text-align:right!important;unicode-bidi:isolate!important;margin:0!important}
 body .chat-view .chat-header #viewDate{display:block!important;width:100%!important;direction:rtl!important;text-align:right!important}
 </style>
+<style id="header-share-v1">
+body .chat-view .chat-header .header-share-btn{background:none!important;border:0!important;padding:6px!important;line-height:0!important;cursor:pointer;color:inherit;opacity:.85;flex:0 0 auto}
+body .chat-view .chat-header .message-actions-menu{left:auto!important;right:0!important}
+</style>
 </head>
 <body>
   <header class="topbar">
@@ -252,7 +256,6 @@ body .chat-view .chat-header #viewDate{display:block!important;width:100%!import
         <div class="chat-header">
                     <div class="chat-title">
             <div class="chat-title-row">
-              <h2 id="viewTitle"></h2><small id="viewDate" hidden style="display:none!important"></small>
               <div class="message-actions-wrap">
                 <button id="messageMenuBtn" class="message-menu-btn" type="button" aria-label="خيارات الرسالة" aria-expanded="false" title="خيارات الرسالة">⋮</button>
                 <div id="messageActionsMenu" class="message-actions-menu hidden" role="menu">
@@ -265,6 +268,7 @@ body .chat-view .chat-header #viewDate{display:block!important;width:100%!import
                   <button id="trashBtn" class="message-action-item danger" type="button" role="menuitem">نقل إلى سلة المحذوفات</button>
                 </div>
               </div>
+              <button type="button" id="headerShareBtn" class="header-share-btn" aria-label="مشاركة" title="مشاركة"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg></button><h2 id="viewTitle"></h2><small id="viewDate" hidden style="display:none!important"></small>
             </div>
           </div>
         </div>
