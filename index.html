@@ -272,6 +272,7 @@ body.dark-mode .settings-menu{background:#1f2a2e}
     <form id="messageForm" method="dialog">
       <div class="dialog-head"><h2 id="dialogHeading">إضافة رسالة</h2><button type="button" id="closeDialog" class="close-btn">×</button></div>
       <label>عنوان الرسالة<input id="messageTitle" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" maxlength="120" required placeholder="مثال: تعليمات مهمة"></label>
+      <label>اسم المرسل (Signature)<input id="messageSender" spellcheck="false" autocomplete="off" maxlength="60" placeholder="اسم مرسل الرسالة"></label>
       <label>محتوى الرسالة<div id="messageContent" class="message-editor" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="false" data-placeholder="اكتب المحتوى هنا... يمكنك إضافة صور أيضًا"></div></label>
       <div id="textTools" class="text-tools"><button type="button" data-t="cut">قص</button><button type="button" data-t="copy">نسخ</button><button type="button" data-t="all">اختيار الكل</button><button type="button" data-t="del">حذف</button><label class="font-color-control" title="اختيار لون الخط"><span>🎨 لون الخط</span><input id="messageTextColor" type="color" value="#e53935" aria-label="اختيار لون الخط"></label></div>
       <label>رابط ملف PDF أو مستند Google Drive<input id="messageFileUrl" type="url" inputmode="url" placeholder="الصق رابط PDF أو ملف من Google Drive"></label>

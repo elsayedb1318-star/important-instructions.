@@ -417,9 +417,10 @@
       return `<section class="drive-file-card"><strong>📄 ${escapeHtml(f.name||"ملف Google Drive")}</strong><iframe src="${preview}" loading="lazy" title="معاينة الملف"></iframe><a href="${download}" target="_blank" rel="noopener">تنزيل الملف</a></section>`;
     }).join("");
   }
+  function signatureHtml(){const mm=messages.find(x=>x.id===selectedId);const nm=mm&&mm.sender?String(mm.sender).trim():"";return nm?`<div class="message-signature" style="color:#16a34a;font-weight:700;margin-top:14px;text-align:left">✍ ${escapeHtml(nm)}</div>`:""}
   function paintBody(b){
     const imgs=readImages(b), video=extractVideo(b.content||""), videoId=video.url?driveFileId(video.url):"";
-    $("messageBubble").innerHTML=`<div class="message-text">${renderColoredText(video.text)}</div>${videoId?`<button type="button" class="drive-video-card" id="openDriveVideo"><span class="drive-video-thumb"><img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(videoId)}&sz=w640" alt="معاينة الفيديو" loading="lazy"><span class="drive-video-play">▶</span></span><span class="drive-video-caption"><strong>مشاهدة الفيديو</strong><small>يفتح داخل التطبيق من Google Drive</small></span></button>`:video.url?`<div class="message-text">رابط الفيديو غير صالح. استخدم رابط مشاركة من Google Drive.</div>`:""}${imgs.length?`<div class="message-images">${imgs.map((src,i)=>`<div class="message-image-item"><img src="${src}" alt="صورة داخل الرسالة" loading="lazy" data-zoom-image="${i}"><a href="${src}" download="important-image-${i+1}.jpg" class="image-download">تنزيل</a></div>`).join("")}</div>`:""}${renderDriveFiles(b.filesJson)}${b.stale?'<div class="message-text" style="opacity:.6;font-size:12px">نسخة محفوظة قد لا تكون الأحدث</div>':""}`;
+    $("messageBubble").innerHTML=`<div class="message-text">${renderColoredText(video.text)}</div>${videoId?`<button type="button" class="drive-video-card" id="openDriveVideo"><span class="drive-video-thumb"><img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(videoId)}&sz=w640" alt="معاينة الفيديو" loading="lazy"><span class="drive-video-play">▶</span></span><span class="drive-video-caption"><strong>مشاهدة الفيديو</strong><small>يفتح داخل التطبيق من Google Drive</small></span></button>`:video.url?`<div class="message-text">رابط الفيديو غير صالح. استخدم رابط مشاركة من Google Drive.</div>`:""}${imgs.length?`<div class="message-images">${imgs.map((src,i)=>`<div class="message-image-item"><img src="${src}" alt="صورة داخل الرسالة" loading="lazy" data-zoom-image="${i}"><a href="${src}" download="important-image-${i+1}.jpg" class="image-download">تنزيل</a></div>`).join("")}</div>`:""}${renderDriveFiles(b.filesJson)}${b.stale?'<div class="message-text" style="opacity:.6;font-size:12px">نسخة محفوظة قد لا تكون الأحدث</div>':""}${signatureHtml()}`;
     const videoBtn=$("openDriveVideo");if(videoBtn)videoBtn.addEventListener("click",()=>openDriveVideo(videoId));
   }
   let imageZoomHistoryOpen = false;
@@ -465,7 +466,7 @@
       else $("messageBubble").innerHTML='<div class="message-text">المحتوى غير متاح بدون إنترنت. افتح هذه الرسالة مرة واحدة أثناء الاتصال ليتم تخزينها.</div>';
     });
   }
-  function openNew(){editingId=null;pendingImages=[];$("dialogHeading").textContent="إضافة رسالة جديدة";$("messageTitle").value="";setEditorContent("");$("messageVideoUrl").value="";$("messageFileUrl").value="";$("notifyOnEdit").checked=false;$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()}
+  function openNew(){editingId=null;pendingImages=[];$("dialogHeading").textContent="إضافة رسالة جديدة";$("messageTitle").value="";try{$("messageSender").value=localStorage.getItem("lastSender")||""}catch{$("messageSender").value=""}setEditorContent("");$("messageVideoUrl").value="";$("messageFileUrl").value="";$("notifyOnEdit").checked=false;$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()}
   function closeDialog(){dialog.close()}
   async function persistMessage(m){
     if(blocked())throw new Error(OFFLINE_MSG);
@@ -513,7 +514,7 @@
     const content=textContent+(videoUrl?"\n[DRIVE_VIDEO_URL]"+videoUrl+"[/DRIVE_VIDEO_URL]":"");
     const now=Date.now(), old=messages.find(m=>m.id===editingId);
     const id=editingId||(db?db.ref("savedMessages").push().key:"local_"+now+"_"+Math.random().toString(36).slice(2,8));
-    const m={id,title,content,imagesJson:JSON.stringify(pendingImages),filesJson:JSON.stringify(fileUrl?[{url:fileUrl,id:fileId,name:"ملف Google Drive"}]:[]),notifyOnEdit:$("notifyOnEdit").checked,createdAt:old?.createdAt||now,updatedAt:now};
+    const m={id,title,content,imagesJson:JSON.stringify(pendingImages),filesJson:JSON.stringify(fileUrl?[{url:fileUrl,id:fileId,name:"ملف Google Drive"}]:[]),notifyOnEdit:$("notifyOnEdit").checked,sender:$("messageSender").value.trim(),createdAt:old?.createdAt||now,updatedAt:now};try{localStorage.setItem("lastSender",m.sender)}catch{}
     const ord=old?old.order:newOrder();if(typeof ord==="number")m.order=ord;
     const gid=old?old.groupId:currentGroup;if(gid)m.groupId=gid;
     if(m.imagesJson.length>1400000){$("formError").textContent="حجم الصور كبير. جرّب صورًا أقل أو أصغر حجمًا.";return}
@@ -546,8 +547,19 @@
     catch(e){toast("تعذر تحديث التثبيت")}
   });
   $("copyBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح");return}try{await navigator.clipboard.writeText(extractVideo(b.content||"").text);toast("تم نسخ النص")}catch{toast("تعذر النسخ؛ حدد النص وانسخه يدويًا")}});
-  $("shareBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح");return}try{if(navigator.share)await navigator.share({title:m.title,text:extractVideo(b.content||"").text+(extractVideo(b.content||"").url?"\n"+extractVideo(b.content||"").url:"")});else{await navigator.clipboard.writeText(m.title+"\n\n"+extractVideo(b.content||"").text+(extractVideo(b.content||"").url?"\n"+extractVideo(b.content||"").url:""));toast("تم نسخ الرسالة للمشاركة")}}catch{}});
-  $("editBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح بدون إنترنت");return}editingId=m.id;pendingImages=readImages(b).slice();const video=extractVideo(b.content||"");$("dialogHeading").textContent="تعديل الرسالة";$("messageTitle").value=m.title||"";setEditorContent(video.text);$("messageVideoUrl").value=video.url;const f=JSON.parse(b.filesJson||"[]");$("messageFileUrl").value=f[0]?.url||"";$("notifyOnEdit").checked=false;$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()});
+  $("shareBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح");return}
+    const v=extractVideo(b.content||"");const sig=m.sender&&String(m.sender).trim()?"\n\n✍ "+String(m.sender).trim():"";
+    const text=(m.title||"")+"\n\n"+v.text+(v.url?"\n"+v.url:"")+sig;
+    try{
+      const imgs=readImages(b);let files=[];
+      for(let k=0;k<imgs.length;k++){try{const r=await fetch(imgs[k]);const bl=await r.blob();files.push(new File([bl],"image-"+(k+1)+".jpg",{type:bl.type||"image/jpeg"}))}catch{}}
+      if(navigator.share){
+        if(files.length&&navigator.canShare&&navigator.canShare({files}))await navigator.share({title:m.title,text,files});
+        else await navigator.share({title:m.title,text});
+      }else{await navigator.clipboard.writeText(text);toast("تم نسخ الرسالة للمشاركة")}
+    }catch{}
+  });
+  $("editBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح بدون إنترنت");return}editingId=m.id;pendingImages=readImages(b).slice();const video=extractVideo(b.content||"");$("dialogHeading").textContent="تعديل الرسالة";$("messageTitle").value=m.title||"";$("messageSender").value=m.sender||"";setEditorContent(video.text);$("messageVideoUrl").value=video.url;const f=JSON.parse(b.filesJson||"[]");$("messageFileUrl").value=f[0]?.url||"";$("notifyOnEdit").checked=false;$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()});
   $("trashBtn").addEventListener("click",async()=>{
     const m=messages.find(x=>x.id===selectedId);if(!m)return;if(blocked()){toast(OFFLINE_MSG);return}
     if(!confirm("نقل الرسالة إلى سلة المحذوفات؟ يمكن استعادتها لاحقًا."))return;
