@@ -222,7 +222,10 @@ body .chat-view .chat-header .header-share-btn{background:none!important;border:
 body .chat-view .chat-header .message-actions-menu{left:auto!important;right:0!important}
 </style>
 <style id="topbar-sticky-v1">
-.topbar{position:sticky!important;top:0!important;z-index:2000!important}
+html,body{height:100%!important;overflow:hidden!important;overscroll-behavior:none!important}
+body{display:flex!important;flex-direction:column!important;height:100vh!important;height:100dvh!important}
+.topbar{position:relative!important;flex:0 0 auto!important;z-index:2000!important}
+body>main{flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;overflow:hidden}
 </style>
 </head>
 <body>
