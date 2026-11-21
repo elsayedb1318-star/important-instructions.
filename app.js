@@ -505,7 +505,11 @@
   });
   $("newBtn").addEventListener("click",openNew);$("welcomeNewBtn").addEventListener("click",openNew);
   $("closeDialog").addEventListener("click",closeDialog);$("cancelBtn").addEventListener("click",closeDialog);
-  $("searchInput").addEventListener("input",()=>{window._fullSearchIds=null;window._fullSearchRunning=false;render()});
+  const searchInputs=[$("searchInput"),$("searchInputTop")].filter(Boolean);
+  searchInputs.forEach(input=>input.addEventListener("input",()=>{
+    searchInputs.forEach(other=>{if(other!==input)other.value=input.value;});
+    window._fullSearchIds=null;window._fullSearchRunning=false;render();
+  }));
   $("messageForm").addEventListener("submit",async e=>{
     e.preventDefault();const title=$("messageTitle").value.trim(),textContent=editorStoredText().trim(),videoUrl=$("messageVideoUrl").value.trim(),fileUrl=$("messageFileUrl").value.trim();
     const videoId=videoUrl?driveFileId(videoUrl):"",fileId=fileUrl?driveFileId(fileUrl):"";

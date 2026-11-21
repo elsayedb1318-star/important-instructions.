@@ -39,6 +39,13 @@
     .group-menu-child{padding-right:28px!important;opacity:.92}
   </style>
 
+  <style id="sidebar-top-search-v1">
+    .group-top-controls{justify-content:stretch!important;gap:6px!important}
+    .sidebar-top-search{display:flex!important;flex:1 1 auto!important;min-width:0!important;height:48px;box-sizing:border-box;margin:0!important}
+    .sidebar-top-search input{min-width:0;width:100%;font-size:13px}
+    .group-top-controls #groupBtn{width:42px!important;min-width:42px!important;height:48px!important;padding:0!important;font-size:20px!important}
+    .group-top-controls #homeBtn{width:48px!important;min-width:48px!important;height:48px!important}
+  </style>
 
   <style>
     .group-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
@@ -236,7 +243,7 @@ body>main{flex:1 1 auto!important;min-height:0!important;height:auto!important;m
 
   <main class="app-shell">
     <aside class="sidebar">
-      <div class="sidebar-heading"><div class="group-wrap"><div class="group-top-controls"><button id="groupBtn" type="button" class="group-btn" aria-expanded="false"><span class="group-btn-label">GROUP</span><span class="group-btn-arrow" aria-hidden="true">⌄</span></button><button id="homeBtn" type="button" class="home-btn" title="الصفحة الرئيسية" aria-label="الصفحة الرئيسية">🏠</button></div><small id="groupCurrent" class="group-current">instructions</small></div><div class="heading-btns"><button id="reorderBtn" class="round-btn" title="ترتيب الرسائل">⇅</button><button id="newBtn" class="round-btn" title="إضافة رسالة جديدة">＋</button></div></div>
+      <div class="sidebar-heading"><div class="group-wrap"><div class="group-top-controls"><label class="search-box sidebar-top-search"><span>⌕</span><input id="searchInputTop" type="search" placeholder="SEARCH..." aria-label="بحث"></label><button id="groupBtn" type="button" class="group-btn" aria-label="المجموعات" title="المجموعات" aria-expanded="false"><span aria-hidden="true">▤⌄</span></button><button id="homeBtn" type="button" class="home-btn" title="الصفحة الرئيسية" aria-label="الصفحة الرئيسية">🏠</button></div><small id="groupCurrent" class="group-current">instructions</small></div><div class="heading-btns"><button id="reorderBtn" class="round-btn" title="ترتيب الرسائل">⇅</button><button id="newBtn" class="round-btn" title="إضافة رسالة جديدة">＋</button></div></div>
       <div id="groupMenu" class="group-menu hidden"><div id="groupList"></div></div>
       <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="SEARCH..."></label>
       <div id="bulkMoveBar" style="display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap">
