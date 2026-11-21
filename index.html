@@ -39,13 +39,6 @@
     .group-menu-child{padding-right:28px!important;opacity:.92}
   </style>
 
-  <style id="sidebar-top-search-v1">
-    .group-top-controls{justify-content:stretch!important;gap:6px!important}
-    .sidebar-top-search{display:flex!important;flex:1 1 auto!important;min-width:0!important;height:48px;box-sizing:border-box;margin:0!important}
-    .sidebar-top-search input{min-width:0;width:100%;font-size:13px}
-    .group-top-controls #groupBtn{width:42px!important;min-width:42px!important;height:48px!important;padding:0!important;font-size:20px!important}
-    .group-top-controls #homeBtn{width:48px!important;min-width:48px!important;height:48px!important}
-  </style>
 
   <style>
     .group-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
@@ -234,7 +227,12 @@ body{display:flex!important;flex-direction:column!important;height:100vh!importa
 .topbar{position:relative!important;flex:0 0 auto!important;z-index:2000!important}
 body>main{flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;overflow:hidden}
 </style>
-</head>
+
+<style id="welcome-search-v39">
+.welcome-groups-wrap .welcome-search{display:flex;width:100%;max-width:100%;box-sizing:border-box;margin:0 0 14px;padding:12px 16px;border-radius:16px;background:var(--input-bg,#f1f3f2);}
+.welcome-groups-wrap .welcome-search input{width:100%;min-width:0;}
+</style>
+\n</head>
 <body>
   <header class="topbar">
     <div class="brand"><div dir="ltr" style="text-align:left;line-height:1.25"><strong>Important Instructions</strong><small style="display:block;font-size:11px;font-weight:500;opacity:.85;margin-top:2px;letter-spacing:.2px">Prepared by Elsayed adel</small></div></div>
@@ -243,7 +241,7 @@ body>main{flex:1 1 auto!important;min-height:0!important;height:auto!important;m
 
   <main class="app-shell">
     <aside class="sidebar">
-      <div class="sidebar-heading"><div class="group-wrap"><div class="group-top-controls"><label class="search-box sidebar-top-search"><span>⌕</span><input id="searchInputTop" type="search" placeholder="SEARCH..." aria-label="بحث"></label><button id="groupBtn" type="button" class="group-btn" aria-label="المجموعات" title="المجموعات" aria-expanded="false"><span aria-hidden="true">▤⌄</span></button><button id="homeBtn" type="button" class="home-btn" title="الصفحة الرئيسية" aria-label="الصفحة الرئيسية">🏠</button></div><small id="groupCurrent" class="group-current">instructions</small></div><div class="heading-btns"><button id="reorderBtn" class="round-btn" title="ترتيب الرسائل">⇅</button><button id="newBtn" class="round-btn" title="إضافة رسالة جديدة">＋</button></div></div>
+      <div class="sidebar-heading"><div class="group-wrap"><div class="group-top-controls"><button id="groupBtn" type="button" class="group-btn" aria-expanded="false"><span class="group-btn-label">GROUP</span><span class="group-btn-arrow" aria-hidden="true">⌄</span></button><button id="homeBtn" type="button" class="home-btn" title="الصفحة الرئيسية" aria-label="الصفحة الرئيسية">🏠</button></div><small id="groupCurrent" class="group-current">instructions</small></div><div class="heading-btns"><button id="reorderBtn" class="round-btn" title="ترتيب الرسائل">⇅</button><button id="newBtn" class="round-btn" title="إضافة رسالة جديدة">＋</button></div></div>
       <div id="groupMenu" class="group-menu hidden"><div id="groupList"></div></div>
       <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="SEARCH..."></label>
       <div id="bulkMoveBar" style="display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap">
@@ -262,7 +260,7 @@ body>main{flex:1 1 auto!important;min-height:0!important;height:auto!important;m
                 <h2></h2>
         <p></p>
         <button id="welcomeNewBtn" class="primary-btn"></button>
-        <div class="welcome-groups-wrap"><h3>GROUP</h3><div id="welcomeGroups" class="welcome-groups"></div></div>
+        <div class="welcome-groups-wrap"><label class="search-box welcome-search"><span>⌕</span><input id="welcomeSearchInput" type="search" placeholder="SEARCH..." aria-label="بحث"></label><div id="welcomeGroups" class="welcome-groups"></div></div>
       </div>
 
       <div id="chatView" class="chat-view hidden">

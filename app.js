@@ -505,7 +505,7 @@
   });
   $("newBtn").addEventListener("click",openNew);$("welcomeNewBtn").addEventListener("click",openNew);
   $("closeDialog").addEventListener("click",closeDialog);$("cancelBtn").addEventListener("click",closeDialog);
-  const searchInputs=[$("searchInput"),$("searchInputTop")].filter(Boolean);
+  const searchInputs=[$("searchInput"),$("welcomeSearchInput")].filter(Boolean);
   searchInputs.forEach(input=>input.addEventListener("input",()=>{
     searchInputs.forEach(other=>{if(other!==input)other.value=input.value;});
     window._fullSearchIds=null;window._fullSearchRunning=false;render();
