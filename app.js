@@ -506,6 +506,7 @@
   $("newBtn").addEventListener("click",openNew);$("welcomeNewBtn").addEventListener("click",openNew);
   $("closeDialog").addEventListener("click",closeDialog);$("cancelBtn").addEventListener("click",closeDialog);
   $("searchInput").addEventListener("input",()=>{window._fullSearchIds=null;window._fullSearchRunning=false;render()});
+  $("searchInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.currentTarget.blur();}});
   $("messageForm").addEventListener("submit",async e=>{
     e.preventDefault();const title=$("messageTitle").value.trim(),textContent=editorStoredText().trim(),videoUrl=$("messageVideoUrl").value.trim(),fileUrl=$("messageFileUrl").value.trim();
     const videoId=videoUrl?driveFileId(videoUrl):"",fileId=fileUrl?driveFileId(fileUrl):"";
