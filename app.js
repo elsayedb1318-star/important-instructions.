@@ -441,10 +441,9 @@
     const imgs=readImages(b), video=extractVideo(b.content||""), videoId=video.url?driveFileId(video.url):"";
     const children=Array.isArray(b.subMessages)?b.subMessages:[];
     $("messageBubble").innerHTML=`<div class="message-text">${renderColoredText(video.text)}</div>${videoId?`<button type="button" class="drive-video-card" id="openDriveVideo"><span class="drive-video-thumb"><img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(videoId)}&sz=w640" alt="معاينة الفيديو" loading="lazy"><span class="drive-video-play">▶</span></span><span class="drive-video-caption"><strong>مشاهدة الفيديو</strong><small>يفتح داخل التطبيق من Google Drive</small></span></button>`:video.url?`<div class="message-text">رابط الفيديو غير صالح. استخدم رابط مشاركة من Google Drive.</div>`:""}${imgs.length?`<div class="message-images">${imgs.map((src,i)=>`<div class="message-image-item"><img src="${src}" alt="صورة داخل الرسالة" loading="lazy" data-zoom-image="${i}"><a href="${src}" download="important-image-${i+1}.jpg" class="image-download">تنزيل</a></div>`).join("")}</div>`:""}${renderDriveFiles(b.filesJson)}${b.stale?'<div class="message-text" style="opacity:.6;font-size:12px">نسخة محفوظة قد لا تكون الأحدث</div>':""}${signatureHtml()}
-      <section class="nested-messages-section"><div class="nested-messages-toolbar"><div class="nested-message-menu"><button type="button" class="nested-menu-toggle" id="nestedActionsToggle" aria-label="خيارات الرسائل الداخلية" aria-expanded="false">⋮</button><div class="nested-menu-items hidden"><button type="button" id="addSubMessageBtn">＋ إضافة رسالة داخلية</button></div></div></div>${children.length?children.map(renderSubMessageCard).join(""):'<div class="nested-messages-empty">لا توجد رسائل داخلية حتى الآن.</div>'}</section>`;
+      <section class="nested-messages-section">${children.length?children.map(renderSubMessageCard).join(""):'<div class="nested-messages-empty">لا توجد رسائل داخلية حتى الآن.</div>'}</section>`;
     const videoBtn=$("openDriveVideo");if(videoBtn)videoBtn.addEventListener("click",()=>openDriveVideo(videoId));
     $("messageBubble").querySelectorAll("[data-sub-video-id]").forEach(btn=>btn.addEventListener("click",()=>openDriveVideo(btn.dataset.subVideoId)));
-    $("addSubMessageBtn").addEventListener("click",()=>{if(verifySubMessagePassword())openSubMessage(selectedId)});
     $("messageBubble").querySelectorAll(".nested-menu-toggle").forEach(btn=>btn.addEventListener("click",e=>{e.stopPropagation();const menu=btn.nextElementSibling;const opening=menu.classList.contains("hidden");$("messageBubble").querySelectorAll(".nested-menu-items").forEach(m=>m.classList.add("hidden"));$("messageBubble").querySelectorAll(".nested-menu-toggle").forEach(b=>b.setAttribute("aria-expanded","false"));if(opening){menu.classList.remove("hidden");btn.setAttribute("aria-expanded","true")}}));
     $("messageBubble").querySelectorAll("[data-edit-sub-message]").forEach(btn=>btn.addEventListener("click",()=>{if(verifySubMessagePassword())openSubMessage(selectedId,btn.dataset.editSubMessage)}));
     $("messageBubble").querySelectorAll("[data-delete-sub-message]").forEach(btn=>btn.addEventListener("click",()=>{if(verifySubMessagePassword())deleteSubMessage(selectedId,btn.dataset.deleteSubMessage)}));
@@ -611,10 +610,11 @@
       messageMenuBtn.setAttribute("aria-expanded", "false");
     }
   });
-  ["pinBtn", "copyBtn", "shareBtn", "editBtn", "trashBtn", "archiveBtn", "copyToGroupBtn"].forEach(id => $(id).addEventListener("click", () => {
+  ["pinBtn", "copyBtn", "addSubMessageBtn", "shareBtn", "editBtn", "trashBtn", "archiveBtn", "copyToGroupBtn"].forEach(id => $(id).addEventListener("click", () => {
     messageActionsMenu.classList.add("hidden");
     messageMenuBtn.setAttribute("aria-expanded", "false");
   }));
+  $("addSubMessageBtn").addEventListener("click",()=>{if(selectedId && verifySubMessagePassword())openSubMessage(selectedId)});
   $("pinBtn").addEventListener("click",async()=>{
     const m=messages.find(x=>x.id===selectedId);if(!m)return;if(blocked()){toast(OFFLINE_MSG);return;}
     const next=!m.pinned;
