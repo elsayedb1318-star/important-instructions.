@@ -419,11 +419,17 @@
   }
   function shareRowHtml(){return `<div class="bubble-share-row" style="text-align:right;margin-top:10px"><button type="button" id="bubbleShareBtn" aria-label="مشاركة" title="مشاركة" style="background:none;border:0;padding:6px;cursor:pointer;color:#075e54;line-height:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg></button></div>`}
   function signatureHtml(){const mm=messages.find(x=>x.id===selectedId);const nm=mm&&mm.sender?String(mm.sender).trim():"";return nm?`<div class="message-signature" style="color:#16a34a;font-weight:700;margin-top:14px;text-align:left">✍ ${escapeHtml(nm)}</div>`:""}
+  function verifySubMessagePassword(){
+    const entered=prompt("أدخل كلمة المرور لإضافة أو تعديل أو حذف رسالة داخلية:");
+    if(entered===null)return false;
+    if(entered!=="1111"){toast("كلمة المرور غير صحيحة");return false;}
+    return true;
+  }
   function renderSubMessageCard(sm, index){
     const video=extractVideo(sm.content||""), videoId=video.url?driveFileId(video.url):"", imgs=readImages(sm);
     const sender=sm.sender?`<div class="sub-message-sender">✍ ${escapeHtml(sm.sender)}</div>`:"";
     return `<section class="nested-message-card">
-      <div class="nested-message-head"><span>رسالة ${index+1}</span><time>${escapeHtml(dateText(sm.updatedAt||sm.createdAt))}</time><span class="nested-message-actions"><button type="button" data-edit-sub-message="${escapeHtml(sm.id)}">تعديل</button><button type="button" data-delete-sub-message="${escapeHtml(sm.id)}">حذف</button></span></div>
+      <div class="nested-message-head"><span>رسالة ${index+1}</span><time>${escapeHtml(dateText(sm.updatedAt||sm.createdAt))}</time><div class="nested-message-menu"><button type="button" class="nested-menu-toggle" aria-label="خيارات الرسالة" aria-expanded="false">⋮</button><div class="nested-menu-items hidden"><button type="button" data-edit-sub-message="${escapeHtml(sm.id)}">تعديل</button><button type="button" data-delete-sub-message="${escapeHtml(sm.id)}">حذف</button></div></div></div>
       ${video.text?`<div class="message-text">${renderColoredText(video.text)}</div>`:""}
       ${videoId?`<button type="button" class="drive-video-card" data-sub-video-id="${escapeHtml(videoId)}"><span class="drive-video-thumb"><img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(videoId)}&sz=w640" alt="معاينة الفيديو" loading="lazy"><span class="drive-video-play">▶</span></span><span class="drive-video-caption"><strong>مشاهدة الفيديو</strong><small>يفتح داخل التطبيق من Google Drive</small></span></button>`:""}
       ${imgs.length?`<div class="message-images">${imgs.map((src,i)=>`<div class="message-image-item"><img src="${src}" alt="صورة مرفقة" loading="lazy" data-zoom-image="${i}"><a href="${src}" download="sub-message-image-${i+1}.jpg" class="image-download">تنزيل</a></div>`).join("")}</div>`:""}
@@ -437,9 +443,10 @@
       <section class="nested-messages-section"><div class="nested-messages-title"><strong>الرسائل داخل هذا العنوان (${children.length})</strong><button type="button" id="addSubMessageBtn">＋ إضافة رسالة داخلية</button></div>${children.length?children.map(renderSubMessageCard).join(""):'<div class="nested-messages-empty">لا توجد رسائل داخلية حتى الآن.</div>'}</section>`;
     const videoBtn=$("openDriveVideo");if(videoBtn)videoBtn.addEventListener("click",()=>openDriveVideo(videoId));
     $("messageBubble").querySelectorAll("[data-sub-video-id]").forEach(btn=>btn.addEventListener("click",()=>openDriveVideo(btn.dataset.subVideoId)));
-    $("addSubMessageBtn").addEventListener("click",()=>openSubMessage(selectedId));
-    $("messageBubble").querySelectorAll("[data-edit-sub-message]").forEach(btn=>btn.addEventListener("click",()=>openSubMessage(selectedId,btn.dataset.editSubMessage)));
-    $("messageBubble").querySelectorAll("[data-delete-sub-message]").forEach(btn=>btn.addEventListener("click",()=>deleteSubMessage(selectedId,btn.dataset.deleteSubMessage)));
+    $("addSubMessageBtn").addEventListener("click",()=>{if(verifySubMessagePassword())openSubMessage(selectedId)});
+    $("messageBubble").querySelectorAll(".nested-menu-toggle").forEach(btn=>btn.addEventListener("click",e=>{e.stopPropagation();const menu=btn.nextElementSibling;const opening=menu.classList.contains("hidden");$("messageBubble").querySelectorAll(".nested-menu-items").forEach(m=>m.classList.add("hidden"));$("messageBubble").querySelectorAll(".nested-menu-toggle").forEach(b=>b.setAttribute("aria-expanded","false"));if(opening){menu.classList.remove("hidden");btn.setAttribute("aria-expanded","true")}}));
+    $("messageBubble").querySelectorAll("[data-edit-sub-message]").forEach(btn=>btn.addEventListener("click",()=>{if(verifySubMessagePassword())openSubMessage(selectedId,btn.dataset.editSubMessage)}));
+    $("messageBubble").querySelectorAll("[data-delete-sub-message]").forEach(btn=>btn.addEventListener("click",()=>{if(verifySubMessagePassword())deleteSubMessage(selectedId,btn.dataset.deleteSubMessage)}));
   }
   let imageZoomHistoryOpen = false;
   function closeImageZoom(fromHistory=false){
@@ -563,7 +570,9 @@
       const content=textContent+(videoUrl?"\n[DRIVE_VIDEO_URL]"+videoUrl+"[/DRIVE_VIDEO_URL]":"");
       const child={id,content,imagesJson:JSON.stringify(pendingImages),filesJson:JSON.stringify(fileUrl?[{url:fileUrl,id:fileId,name:"ملف Google Drive"}]:[]),sender:$("messageSender").value.trim(),createdAt:oldChild?.createdAt||now,updatedAt:now};
       if(child.imagesJson.length>1400000){$("formError").textContent="حجم الصور كبير. جرّب صورًا أقل أو أصغر حجمًا.";return}
-      const children=(oldBody.subMessages||[]).filter(x=>x.id!==id);children.push(child);
+      const existingChildren=oldBody.subMessages||[];
+      // New messages are appended at the end; editing keeps the message in its original position.
+      const children=editingSubMessageId?existingChildren.map(x=>x.id===id?child:x):[...existingChildren,child];
       const updatedBody={content:oldBody.content||"",imagesJson:oldBody.imagesJson||"[]",filesJson:oldBody.filesJson||"[]",subMessages:children};
       try{
         if(blocked())throw new Error(OFFLINE_MSG);

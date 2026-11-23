@@ -237,9 +237,13 @@ body>main{flex:1 1 auto!important;min-height:0!important;height:auto!important;m
     .nested-message-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px;color:var(--muted,#6b7772);font-size:.88em}
     .nested-message-head>span:first-child{font-weight:800;color:#078675}
     .nested-message-head time{margin-inline-start:auto}
-    .nested-message-actions{display:flex;gap:6px}
-    .nested-message-actions button{border:1px solid var(--border,#dce5e1);border-radius:7px;padding:5px 9px;background:transparent;color:var(--text,inherit);font:inherit;cursor:pointer}
-    .nested-message-actions button[data-delete-sub-message]{color:#c0392b}
+    .nested-message-menu{position:relative;margin-inline-start:2px}
+    .nested-menu-toggle{width:32px;height:32px;border:1px solid var(--border,#dce5e1);border-radius:8px;background:transparent;color:var(--text,inherit);font-size:23px;line-height:1;cursor:pointer}
+    .nested-menu-items{position:absolute;inset-inline-end:0;top:36px;z-index:20;min-width:112px;padding:5px;background:var(--panel,#fff);border:1px solid var(--border,#dce5e1);border-radius:10px;box-shadow:0 5px 18px rgba(0,0,0,.14)}
+    .nested-menu-items button{display:block;width:100%;padding:9px 12px;border:0;border-radius:7px;background:transparent;text-align:right;color:var(--text,inherit);font:inherit;cursor:pointer}
+    .nested-menu-items button:hover{background:rgba(7,134,117,.09)}
+    .nested-menu-items button[data-delete-sub-message]{color:#c0392b}
+    .nested-message-menu .hidden{display:none!important}
     .sub-message-sender{margin-top:10px;color:#16a34a;font-weight:700;text-align:left}
   </style>
 
