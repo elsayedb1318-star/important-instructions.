@@ -4,7 +4,7 @@
   document.head.appendChild(bulkStyle);
   const $ = id => document.getElementById(id);
   const listEl = $("conversationList"), dialog = $("messageDialog");
-  let messages = [], groups = [], trashItems = [], currentGroup = "instructions", reorderMode = false, selectedId = null, editingId = null, db = null, installPrompt = null, pendingImages = [], viewMode = "active", moveSelectMode = false, selectedFromSubgroup = false;
+  let messages = [], groups = [], trashItems = [], currentGroup = "instructions", reorderMode = false, selectedId = null, editingId = null, editingSubMessageId = null, childMode = false, db = null, installPrompt = null, pendingImages = [], pendingSubMessages = [], viewMode = "active", moveSelectMode = false, selectedFromSubgroup = false;
   const selectedMoveIds = new Set();
   const expandedSubgroupIds = new Set();
   const localKey = "rasayeli_local_messages_v1", localGroupsKey = "rasayeli_local_groups_v1", groupKey = "rasayeli_current_group_v1", DEFAULT_GROUP = "instructions";
@@ -146,7 +146,7 @@
   const hasImgs = m => typeof m.hasImages === "boolean" ? m.hasImages : readImages(m).length > 0;
   const bodyCache = new Map(), inflight = new Map();
   function peekBody(m){
-    if(typeof m.content === "string" || typeof m.imagesJson === "string") return {content: m.content || "", imagesJson: m.imagesJson || "[]", filesJson:m.filesJson||"[]"};
+    if(typeof m.content === "string" || typeof m.imagesJson === "string") return {content: m.content || "", imagesJson: m.imagesJson || "[]", filesJson:m.filesJson||"[]", subMessages:Array.isArray(m.subMessages)?m.subMessages:[]};
     const mem = bodyCache.get(m.id); return mem && mem.updatedAt === m.updatedAt ? mem : null;
   }
   async function loadBody(m){
@@ -156,7 +156,7 @@
     if(db && online){
       try{
         const v = (await db.ref("savedBodies/" + m.id).once("value")).val() || {};
-        const b = {updatedAt: m.updatedAt, content: v.content || "", imagesJson: v.imagesJson || "[]", filesJson:v.filesJson||"[]"};
+        const b = {updatedAt: m.updatedAt, content: v.content || "", imagesJson: v.imagesJson || "[]", filesJson:v.filesJson||"[]", subMessages:Array.isArray(v.subMessages)?v.subMessages:[]};
         bodyCache.set(m.id, b); cacheSet("body:" + m.id, b); return b;
       }catch(e){ console.warn("body load failed", e); }
     }
@@ -419,10 +419,27 @@
   }
   function shareRowHtml(){return `<div class="bubble-share-row" style="text-align:right;margin-top:10px"><button type="button" id="bubbleShareBtn" aria-label="مشاركة" title="مشاركة" style="background:none;border:0;padding:6px;cursor:pointer;color:#075e54;line-height:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg></button></div>`}
   function signatureHtml(){const mm=messages.find(x=>x.id===selectedId);const nm=mm&&mm.sender?String(mm.sender).trim():"";return nm?`<div class="message-signature" style="color:#16a34a;font-weight:700;margin-top:14px;text-align:left">✍ ${escapeHtml(nm)}</div>`:""}
+  function renderSubMessageCard(sm, index){
+    const video=extractVideo(sm.content||""), videoId=video.url?driveFileId(video.url):"", imgs=readImages(sm);
+    const sender=sm.sender?`<div class="sub-message-sender">✍ ${escapeHtml(sm.sender)}</div>`:"";
+    return `<section class="nested-message-card">
+      <div class="nested-message-head"><span>رسالة ${index+1}</span><time>${escapeHtml(dateText(sm.updatedAt||sm.createdAt))}</time><span class="nested-message-actions"><button type="button" data-edit-sub-message="${escapeHtml(sm.id)}">تعديل</button><button type="button" data-delete-sub-message="${escapeHtml(sm.id)}">حذف</button></span></div>
+      ${video.text?`<div class="message-text">${renderColoredText(video.text)}</div>`:""}
+      ${videoId?`<button type="button" class="drive-video-card" data-sub-video-id="${escapeHtml(videoId)}"><span class="drive-video-thumb"><img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(videoId)}&sz=w640" alt="معاينة الفيديو" loading="lazy"><span class="drive-video-play">▶</span></span><span class="drive-video-caption"><strong>مشاهدة الفيديو</strong><small>يفتح داخل التطبيق من Google Drive</small></span></button>`:""}
+      ${imgs.length?`<div class="message-images">${imgs.map((src,i)=>`<div class="message-image-item"><img src="${src}" alt="صورة مرفقة" loading="lazy" data-zoom-image="${i}"><a href="${src}" download="sub-message-image-${i+1}.jpg" class="image-download">تنزيل</a></div>`).join("")}</div>`:""}
+      ${renderDriveFiles(sm.filesJson)}${sender}
+    </section>`;
+  }
   function paintBody(b){
     const imgs=readImages(b), video=extractVideo(b.content||""), videoId=video.url?driveFileId(video.url):"";
-    $("messageBubble").innerHTML=`<div class="message-text">${renderColoredText(video.text)}</div>${videoId?`<button type="button" class="drive-video-card" id="openDriveVideo"><span class="drive-video-thumb"><img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(videoId)}&sz=w640" alt="معاينة الفيديو" loading="lazy"><span class="drive-video-play">▶</span></span><span class="drive-video-caption"><strong>مشاهدة الفيديو</strong><small>يفتح داخل التطبيق من Google Drive</small></span></button>`:video.url?`<div class="message-text">رابط الفيديو غير صالح. استخدم رابط مشاركة من Google Drive.</div>`:""}${imgs.length?`<div class="message-images">${imgs.map((src,i)=>`<div class="message-image-item"><img src="${src}" alt="صورة داخل الرسالة" loading="lazy" data-zoom-image="${i}"><a href="${src}" download="important-image-${i+1}.jpg" class="image-download">تنزيل</a></div>`).join("")}</div>`:""}${renderDriveFiles(b.filesJson)}${b.stale?'<div class="message-text" style="opacity:.6;font-size:12px">نسخة محفوظة قد لا تكون الأحدث</div>':""}${signatureHtml()}`;
+    const children=Array.isArray(b.subMessages)?b.subMessages:[];
+    $("messageBubble").innerHTML=`<div class="message-text">${renderColoredText(video.text)}</div>${videoId?`<button type="button" class="drive-video-card" id="openDriveVideo"><span class="drive-video-thumb"><img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(videoId)}&sz=w640" alt="معاينة الفيديو" loading="lazy"><span class="drive-video-play">▶</span></span><span class="drive-video-caption"><strong>مشاهدة الفيديو</strong><small>يفتح داخل التطبيق من Google Drive</small></span></button>`:video.url?`<div class="message-text">رابط الفيديو غير صالح. استخدم رابط مشاركة من Google Drive.</div>`:""}${imgs.length?`<div class="message-images">${imgs.map((src,i)=>`<div class="message-image-item"><img src="${src}" alt="صورة داخل الرسالة" loading="lazy" data-zoom-image="${i}"><a href="${src}" download="important-image-${i+1}.jpg" class="image-download">تنزيل</a></div>`).join("")}</div>`:""}${renderDriveFiles(b.filesJson)}${b.stale?'<div class="message-text" style="opacity:.6;font-size:12px">نسخة محفوظة قد لا تكون الأحدث</div>':""}${signatureHtml()}
+      <section class="nested-messages-section"><div class="nested-messages-title"><strong>الرسائل داخل هذا العنوان (${children.length})</strong><button type="button" id="addSubMessageBtn">＋ إضافة رسالة داخلية</button></div>${children.length?children.map(renderSubMessageCard).join(""):'<div class="nested-messages-empty">لا توجد رسائل داخلية حتى الآن.</div>'}</section>`;
     const videoBtn=$("openDriveVideo");if(videoBtn)videoBtn.addEventListener("click",()=>openDriveVideo(videoId));
+    $("messageBubble").querySelectorAll("[data-sub-video-id]").forEach(btn=>btn.addEventListener("click",()=>openDriveVideo(btn.dataset.subVideoId)));
+    $("addSubMessageBtn").addEventListener("click",()=>openSubMessage(selectedId));
+    $("messageBubble").querySelectorAll("[data-edit-sub-message]").forEach(btn=>btn.addEventListener("click",()=>openSubMessage(selectedId,btn.dataset.editSubMessage)));
+    $("messageBubble").querySelectorAll("[data-delete-sub-message]").forEach(btn=>btn.addEventListener("click",()=>deleteSubMessage(selectedId,btn.dataset.deleteSubMessage)));
   }
   let imageZoomHistoryOpen = false;
   function closeImageZoom(fromHistory=false){
@@ -467,12 +484,13 @@
       else $("messageBubble").innerHTML='<div class="message-text">المحتوى غير متاح بدون إنترنت. افتح هذه الرسالة مرة واحدة أثناء الاتصال ليتم تخزينها.</div>';
     });
   }
-  function openNew(){editingId=null;pendingImages=[];$("dialogHeading").textContent="إضافة رسالة جديدة";$("messageTitle").value="";try{$("messageSender").value=localStorage.getItem("lastSender")||""}catch{$("messageSender").value=""}setEditorContent("");$("messageVideoUrl").value="";$("messageFileUrl").value="";$("notifyOnEdit").checked=false;$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()}
+  function setDialogMode(isChild){childMode=isChild;$("messageTitleField").style.display=isChild?"none":"";$("notifyEditField").style.display=isChild?"none":"";$("messageTitle").required=!isChild;}
+  function openNew(){setDialogMode(false);editingId=null;editingSubMessageId=null;pendingImages=[];pendingSubMessages=[];$("dialogHeading").textContent="إضافة رسالة جديدة";$("messageTitle").value="";try{$("messageSender").value=localStorage.getItem("lastSender")||""}catch{$("messageSender").value=""}setEditorContent("");$("messageVideoUrl").value="";$("messageFileUrl").value="";$("notifyOnEdit").checked=false;$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()}
   function closeDialog(){dialog.close()}
   async function persistMessage(m){
     if(blocked())throw new Error(OFFLINE_MSG);
     if(db){
-      const { id, content, imagesJson, filesJson, ...meta } = m;
+      const { id, content, imagesJson, filesJson, subMessages, ...meta } = m;
       meta.preview = makePreview(extractVideo(content).text); meta.hasImages = readImages({imagesJson}).length > 0;
       const isEdit = messages.some(x => x.id === id);
       const noticeTs = Date.now();
@@ -480,18 +498,42 @@
       const noticeRef = shouldNotify ? db.ref("jigNotifications").push() : null;
       const updates = {
         ["savedMessages/"+id]: meta,
-        ["savedBodies/"+id]: {content, imagesJson, filesJson:filesJson||"[]"},
+        ["savedBodies/"+id]: {content, imagesJson, filesJson:filesJson||"[]", subMessages:Array.isArray(m.subMessages)?m.subMessages:[]},
         ...(shouldNotify ? {
           notice: {id, title: m.title, content: String(content || "").slice(0, 2000), action: isEdit ? "edit" : "add", ts: noticeTs},
           ["jigNotifications/"+noticeRef.key]: {id, title: m.title, groupId: m.groupId || DEFAULT_GROUP, action: isEdit ? "edit" : "add", ts: noticeTs}
         } : {})
       };
       await db.ref().update(updates);
-      const b = {updatedAt: m.updatedAt, content, imagesJson, filesJson:m.filesJson||"[]"}; bodyCache.set(id, b); cacheSet("body:"+id, b);
+      const b = {updatedAt: m.updatedAt, content, imagesJson, filesJson:m.filesJson||"[]", subMessages:Array.isArray(subMessages)?subMessages:[]}; bodyCache.set(id, b); cacheSet("body:"+id, b);
     }
     else {const idx=messages.findIndex(x=>x.id===m.id);if(idx>=0)messages[idx]=m;else messages.unshift(m);sortMsgs(messages);saveLocal();render()}
   }
 
+  async function openSubMessage(parentId, childId=null){
+    if(blocked()){toast(OFFLINE_MSG);return}
+    const parent=messages.find(x=>x.id===parentId);if(!parent)return;
+    const body=await getBody(parent);if(!body){toast("تعذر تحميل محتوى العنوان");return}
+    const old=(body.subMessages||[]).find(x=>x.id===childId);
+    setDialogMode(true);editingId=null;editingSubMessageId=childId;pendingImages=old?readImages(old).slice():[];pendingSubMessages=Array.isArray(body.subMessages)?body.subMessages.slice():[];
+    $("dialogHeading").textContent=old?"تعديل رسالة داخلية":"إضافة رسالة داخلية";
+    $("messageTitle").value="";$("messageSender").value=old?.sender||"";
+    const video=extractVideo(old?.content||"");setEditorContent(video.text);
+    $("messageVideoUrl").value=video.url;
+    let files=[];try{files=JSON.parse(old?.filesJson||"[]")}catch{}
+    $("messageFileUrl").value=files[0]?.url||"";$("notifyOnEdit").checked=false;$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal();
+  }
+  async function deleteSubMessage(parentId, childId){
+    if(blocked()){toast(OFFLINE_MSG);return}
+    if(!confirm("حذف هذه الرسالة الداخلية؟"))return;
+    const parent=messages.find(x=>x.id===parentId);if(!parent)return;
+    const body=await getBody(parent);if(!body)return;
+    const children=(body.subMessages||[]).filter(x=>x.id!==childId);const now=Date.now();
+    const updatedBody={content:body.content||"",imagesJson:body.imagesJson||"[]",filesJson:body.filesJson||"[]",subMessages:children};
+    try{parent.updatedAt=now;if(db)await db.ref().update({["savedBodies/"+parentId]:updatedBody,["savedMessages/"+parentId+"/updatedAt"]:now});else{parent.subMessages=children;saveLocal()}
+      const cached={...updatedBody,updatedAt:now};bodyCache.set(parentId,cached);cacheSet("body:"+parentId,cached);showMessage();toast("تم حذف الرسالة الداخلية");
+    }catch(e){console.error(e);toast("تعذر حذف الرسالة الداخلية")}
+  }
   function resizeImage(file){return new Promise((resolve,reject)=>{
     const reader=new FileReader(); reader.onerror=reject; reader.onload=()=>{const img=new Image();img.onerror=reject;img.onload=()=>{
       const max=1000,scale=Math.min(1,max/Math.max(img.width,img.height));const canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));
@@ -506,17 +548,39 @@
   $("newBtn").addEventListener("click",openNew);$("welcomeNewBtn").addEventListener("click",openNew);
   $("closeDialog").addEventListener("click",closeDialog);$("cancelBtn").addEventListener("click",closeDialog);
   $("searchInput").addEventListener("input",()=>{window._fullSearchIds=null;window._fullSearchRunning=false;render()});
-  $("searchInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.currentTarget.blur();}});
   $("messageForm").addEventListener("submit",async e=>{
-    e.preventDefault();const title=$("messageTitle").value.trim(),textContent=editorStoredText().trim(),videoUrl=$("messageVideoUrl").value.trim(),fileUrl=$("messageFileUrl").value.trim();
+    e.preventDefault();
+    const textContent=editorStoredText().trim(),videoUrl=$("messageVideoUrl").value.trim(),fileUrl=$("messageFileUrl").value.trim();
     const videoId=videoUrl?driveFileId(videoUrl):"",fileId=fileUrl?driveFileId(fileUrl):"";
     if(fileUrl&&!fileId){$("formError").textContent="رابط الملف غير صالح. استخدم رابط مشاركة Google Drive.";return}
     if(videoUrl&&!videoId){$("formError").textContent="رابط غير صالح. الصق رابط فيديو من Google Drive مثل drive.google.com/file/d/...";return}
+    if(childMode){
+      if(!textContent&&!pendingImages.length&&!videoUrl&&!fileUrl){$("formError").textContent="أضف نصًا أو صورة أو مرفقًا واحدًا على الأقل.";return}
+      const parent=messages.find(x=>x.id===selectedId);if(!parent){$("formError").textContent="العنوان الرئيسي غير موجود.";return}
+      const oldBody=await getBody(parent);if(!oldBody){$("formError").textContent="تعذر تحميل الرسالة الرئيسية.";return}
+      const now=Date.now(), oldChild=(oldBody.subMessages||[]).find(x=>x.id===editingSubMessageId);
+      const id=editingSubMessageId||(db?db.ref("savedBodies/"+parent.id+"/subMessages").push().key:"sub_"+now+"_"+Math.random().toString(36).slice(2,8));
+      const content=textContent+(videoUrl?"\n[DRIVE_VIDEO_URL]"+videoUrl+"[/DRIVE_VIDEO_URL]":"");
+      const child={id,content,imagesJson:JSON.stringify(pendingImages),filesJson:JSON.stringify(fileUrl?[{url:fileUrl,id:fileId,name:"ملف Google Drive"}]:[]),sender:$("messageSender").value.trim(),createdAt:oldChild?.createdAt||now,updatedAt:now};
+      if(child.imagesJson.length>1400000){$("formError").textContent="حجم الصور كبير. جرّب صورًا أقل أو أصغر حجمًا.";return}
+      const children=(oldBody.subMessages||[]).filter(x=>x.id!==id);children.push(child);
+      const updatedBody={content:oldBody.content||"",imagesJson:oldBody.imagesJson||"[]",filesJson:oldBody.filesJson||"[]",subMessages:children};
+      try{
+        if(blocked())throw new Error(OFFLINE_MSG);
+        const parentUpdatedAt=now;parent.updatedAt=parentUpdatedAt;
+        if(db)await db.ref().update({["savedBodies/"+parent.id]:updatedBody,["savedMessages/"+parent.id+"/updatedAt"]:parentUpdatedAt});
+        else{parent.subMessages=children;saveLocal()}
+        const cached={...updatedBody,updatedAt:parentUpdatedAt};bodyCache.set(parent.id,cached);cacheSet("body:"+parent.id,cached);
+        closeDialog();render();toast(editingSubMessageId?"تم تعديل الرسالة الداخلية":"تمت إضافة الرسالة داخل العنوان");
+      }catch(err){console.error(err);$("formError").textContent="لم يتم الحفظ: "+(err.message||"تحقق من الاتصال والصلاحيات");}
+      return;
+    }
+    const title=$("messageTitle").value.trim();
     if(!title||(!textContent&&!pendingImages.length&&!videoUrl&&!fileUrl)){$("formError").textContent="اكتب عنوان الرسالة وأضف نصًا أو صورة أو فيديو واحدًا على الأقل.";return}
     const content=textContent+(videoUrl?"\n[DRIVE_VIDEO_URL]"+videoUrl+"[/DRIVE_VIDEO_URL]":"");
     const now=Date.now(), old=messages.find(m=>m.id===editingId);
     const id=editingId||(db?db.ref("savedMessages").push().key:"local_"+now+"_"+Math.random().toString(36).slice(2,8));
-    const m={id,title,content,imagesJson:JSON.stringify(pendingImages),filesJson:JSON.stringify(fileUrl?[{url:fileUrl,id:fileId,name:"ملف Google Drive"}]:[]),notifyOnEdit:$("notifyOnEdit").checked,sender:$("messageSender").value.trim(),createdAt:old?.createdAt||now,updatedAt:now};try{localStorage.setItem("lastSender",m.sender)}catch{}
+    const m={id,title,content,imagesJson:JSON.stringify(pendingImages),filesJson:JSON.stringify(fileUrl?[{url:fileUrl,id:fileId,name:"ملف Google Drive"}]:[]),subMessages:pendingSubMessages,notifyOnEdit:$("notifyOnEdit").checked,sender:$("messageSender").value.trim(),createdAt:old?.createdAt||now,updatedAt:now};try{localStorage.setItem("lastSender",m.sender)}catch{}
     const ord=old?old.order:newOrder();if(typeof ord==="number")m.order=ord;
     const gid=old?old.groupId:currentGroup;if(gid)m.groupId=gid;
     if(m.imagesJson.length>1400000){$("formError").textContent="حجم الصور كبير. جرّب صورًا أقل أو أصغر حجمًا.";return}
@@ -563,12 +627,12 @@
       }else{await navigator.clipboard.writeText(text);toast("تم نسخ الرسالة للمشاركة")}
     }catch{}
   });
-  $("editBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح بدون إنترنت");return}editingId=m.id;pendingImages=readImages(b).slice();const video=extractVideo(b.content||"");$("dialogHeading").textContent="تعديل الرسالة";$("messageTitle").value=m.title||"";$("messageSender").value=m.sender||"";setEditorContent(video.text);$("messageVideoUrl").value=video.url;const f=JSON.parse(b.filesJson||"[]");$("messageFileUrl").value=f[0]?.url||"";$("notifyOnEdit").checked=false;$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()});
+  $("editBtn").addEventListener("click",async()=>{const m=messages.find(x=>x.id===selectedId);if(!m)return;const b=await getBody(m);if(!b){toast("المحتوى غير متاح بدون إنترنت");return}setDialogMode(false);editingSubMessageId=null;pendingSubMessages=Array.isArray(b.subMessages)?b.subMessages.slice():[];editingId=m.id;pendingImages=readImages(b).slice();const video=extractVideo(b.content||"");$("dialogHeading").textContent="تعديل الرسالة";$("messageTitle").value=m.title||"";$("messageSender").value=m.sender||"";setEditorContent(video.text);$("messageVideoUrl").value=video.url;const f=JSON.parse(b.filesJson||"[]");$("messageFileUrl").value=f[0]?.url||"";$("notifyOnEdit").checked=false;$("messageImages").value="";$("formError").textContent="";renderImagePreview();dialog.showModal()});
   $("trashBtn").addEventListener("click",async()=>{
     const m=messages.find(x=>x.id===selectedId);if(!m)return;if(blocked()){toast(OFFLINE_MSG);return}
     if(!confirm("نقل الرسالة إلى سلة المحذوفات؟ يمكن استعادتها لاحقًا."))return;
-    try{const b=await getBody(m)||{content:"",imagesJson:"[]",filesJson:"[]"};
-      if(db)await db.ref().update({["deletedMessages/"+m.id]:{meta:m,body:{content:b.content||"",imagesJson:b.imagesJson||"[]",filesJson:b.filesJson||"[]"},deletedAt:Date.now()},["savedMessages/"+m.id]:null,["savedBodies/"+m.id]:null});
+    try{const b=await getBody(m)||{content:"",imagesJson:"[]",filesJson:"[]",subMessages:[]};
+      if(db)await db.ref().update({["deletedMessages/"+m.id]:{meta:m,body:{content:b.content||"",imagesJson:b.imagesJson||"[]",filesJson:b.filesJson||"[]",subMessages:Array.isArray(b.subMessages)?b.subMessages:[]},deletedAt:Date.now()},["savedMessages/"+m.id]:null,["savedBodies/"+m.id]:null});
       else{trashItems.push({...m,trashBody:b,deletedAt:Date.now()});messages=messages.filter(x=>x.id!==m.id);saveLocal()}
       selectedId=null;render();showWelcome();toast("تم النقل إلى سلة المحذوفات");
     }catch(e){console.error(e);toast("تعذر النقل إلى سلة المحذوفات؛ حدّث قواعد Firebase")}

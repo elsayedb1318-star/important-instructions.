@@ -227,34 +227,22 @@ body{display:flex!important;flex-direction:column!important;height:100vh!importa
 .topbar{position:relative!important;flex:0 0 auto!important;z-index:2000!important}
 body>main{flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;overflow:hidden}
 </style>
-<style id="full-message-title-and-left-group-label-v1">
-  /* Show the complete message title in the left conversation list. */
-  #conversationList .conversation {
-    height: auto !important;
-    min-height: 68px;
-    align-items: flex-start !important;
-  }
-  #conversationList .conversation-info {
-    min-width: 0 !important;
-    flex: 1 1 0 !important;
-    overflow: visible !important;
-  }
-  #conversationList .conversation-info h3 {
-    display: block !important;
-    white-space: normal !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
-    overflow-wrap: anywhere !important;
-    word-break: normal !important;
-    -webkit-line-clamp: unset !important;
-    line-clamp: unset !important;
-    max-height: none !important;
-  }
-  #conversationList .conversation-info p {
-    white-space: normal !important;
-    overflow-wrap: anywhere !important;
-  }
-</style>
+
+  <style id="nested-messages-ui-v1">
+    .nested-messages-section{margin-top:22px;padding-top:14px;border-top:2px solid var(--border,#dce5e1)}
+    .nested-messages-title{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .nested-messages-title button{border:1px solid #078675;border-radius:10px;padding:9px 12px;font:inherit;font-weight:700;color:#078675;background:transparent;cursor:pointer}
+    .nested-messages-empty{padding:14px;border:1px dashed var(--border,#ccd8d3);border-radius:12px;color:var(--muted,#78827e);text-align:center}
+    .nested-message-card{margin:10px 0;padding:13px;border:1px solid var(--border,#dce5e1);border-radius:13px;background:var(--panel,#fff);box-shadow:0 2px 8px rgba(0,0,0,.035)}
+    .nested-message-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px;color:var(--muted,#6b7772);font-size:.88em}
+    .nested-message-head>span:first-child{font-weight:800;color:#078675}
+    .nested-message-head time{margin-inline-start:auto}
+    .nested-message-actions{display:flex;gap:6px}
+    .nested-message-actions button{border:1px solid var(--border,#dce5e1);border-radius:7px;padding:5px 9px;background:transparent;color:var(--text,inherit);font:inherit;cursor:pointer}
+    .nested-message-actions button[data-delete-sub-message]{color:#c0392b}
+    .sub-message-sender{margin-top:10px;color:#16a34a;font-weight:700;text-align:left}
+  </style>
+
 </head>
 <body>
   <header class="topbar">
@@ -283,7 +271,7 @@ body>main{flex:1 1 auto!important;min-height:0!important;height:auto!important;m
                 <h2></h2>
         <p></p>
         <button id="welcomeNewBtn" class="primary-btn"></button>
-        <div class="welcome-groups-wrap"><div id="welcomeGroups" class="welcome-groups"></div></div>
+        <div class="welcome-groups-wrap"><h3>GROUP</h3><div id="welcomeGroups" class="welcome-groups"></div></div>
       </div>
 
       <div id="chatView" class="chat-view hidden">
@@ -316,13 +304,13 @@ body>main{flex:1 1 auto!important;min-height:0!important;height:auto!important;m
   <dialog id="messageDialog">
     <form id="messageForm" method="dialog">
       <div class="dialog-head"><h2 id="dialogHeading">إضافة رسالة</h2><button type="button" id="closeDialog" class="close-btn">×</button></div>
-      <label>عنوان الرسالة<input id="messageTitle" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" maxlength="120" required placeholder="مثال: تعليمات مهمة"></label>
+      <label id="messageTitleField">عنوان الرسالة<input id="messageTitle" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" maxlength="120" required placeholder="مثال: تعليمات مهمة"></label>
       <label>اسم المرسل (Signature)<input id="messageSender" spellcheck="false" autocomplete="off" maxlength="60" placeholder="اسم مرسل الرسالة"></label>
       <label>محتوى الرسالة<div id="messageContent" class="message-editor" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="false" data-placeholder="اكتب المحتوى هنا... يمكنك إضافة صور أيضًا"></div></label>
       <div id="textTools" class="text-tools"><button type="button" data-t="cut">قص</button><button type="button" data-t="copy">نسخ</button><button type="button" data-t="all">اختيار الكل</button><button type="button" data-t="del">حذف</button><label class="font-color-control" title="اختيار لون الخط"><span>🎨 لون الخط</span><input id="messageTextColor" type="color" value="#e53935" aria-label="اختيار لون الخط"></label></div>
       <label>رابط ملف PDF أو مستند Google Drive<input id="messageFileUrl" type="url" inputmode="url" placeholder="الصق رابط PDF أو ملف من Google Drive"></label>
       <div class="dialog-note">ارفع الملف على Google Drive، واجعل المشاركة «أي شخص لديه الرابط – مشاهد»، ثم الصق الرابط هنا. يمكن فتح PDF داخل التطبيق وتنزيله.</div>
-      <label class="notify-edit-label"><input id="notifyOnEdit" type="checkbox"> إرسال إشعار إلى JIG SEARCH</label>
+      <label id="notifyEditField" class="notify-edit-label"><input id="notifyOnEdit" type="checkbox"> إرسال إشعار إلى JIG SEARCH</label>
       <label>رابط فيديو Google Drive<input id="messageVideoUrl" type="url" inputmode="url" placeholder="الصق رابط مشاركة الفيديو من Google Drive"></label>
       <div class="dialog-note">اجعل مشاركة الفيديو في Google Drive على: أي شخص لديه الرابط – مشاهد. سيظهر الفيديو داخل التطبيق دون الانتقال إلى Drive.</div>
       <label class="image-picker-label">إضافة صور (يمكن اختيار أكثر من صورة)<input id="messageImages" type="file" accept="image/*" multiple></label>
