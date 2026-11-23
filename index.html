@@ -233,7 +233,9 @@ body>main{flex:1 1 auto!important;min-height:0!important;height:auto!important;m
     .nested-messages-toolbar{display:flex;justify-content:flex-end;align-items:center;margin-bottom:8px}
     .nested-messages-toolbar .nested-menu-toggle{border-color:#078675;color:#078675}
     .nested-messages-empty{padding:14px;border:1px dashed var(--border,#ccd8d3);border-radius:12px;color:var(--muted,#78827e);text-align:center}
-    .nested-message-card{margin:10px 0;padding:13px;border:1px solid var(--border,#dce5e1);border-radius:13px;background:var(--panel,#fff);box-shadow:0 2px 8px rgba(0,0,0,.035)}
+    .nested-message-card{display:block!important;flex:0 0 auto!important;align-self:stretch!important;width:auto!important;height:auto!important;min-height:0!important;max-height:none!important;box-sizing:border-box;margin:10px 0;padding:13px;border:1px solid var(--border,#dce5e1);border-radius:13px;background:var(--panel,#fff);box-shadow:0 2px 8px rgba(0,0,0,.035);justify-content:flex-start!important;gap:0!important}
+    .nested-message-card>.message-text,.nested-message-card>.message-images,.nested-message-card>.drive-file-card,.nested-message-card>.drive-video-card,.nested-message-card>.sub-message-sender{flex:none!important;height:auto!important;min-height:0!important}
+    .nested-message-card .sub-message-sender{margin-top:12px!important;padding-top:0!important}
     .nested-message-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px;color:var(--muted,#6b7772);font-size:.88em}
     .nested-message-name{font-weight:800;color:#078675;white-space:nowrap}
     .nested-message-menu{display:flex;align-items:center;gap:8px;position:relative}
