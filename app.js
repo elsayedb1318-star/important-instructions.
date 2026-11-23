@@ -359,6 +359,7 @@
   }
   $("groupBtn").addEventListener("click",e=>{e.stopPropagation();const menu=$("groupMenu");menu.classList.toggle("hidden");$("groupBtn").setAttribute("aria-expanded",String(!menu.classList.contains("hidden")))});
   $("homeBtn").addEventListener("click",()=>{selectedId=null;selectedFromSubgroup=false;showWelcome();render();});
+  const brandRefresh=$("brandRefresh");if(brandRefresh){const refreshPage=()=>window.location.reload();brandRefresh.addEventListener("click",refreshPage);brandRefresh.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();refreshPage()}})}
   $("groupAddBtn").addEventListener("click",addGroup);
   $("settingsBtn").addEventListener("click",async e=>{e.stopPropagation();const m=$("settingsMenu");if(!m.classList.contains("hidden")){m.classList.add("hidden");$("settingsBtn").setAttribute("aria-expanded","false");return}const pw=await askBackupPassword("Setting","أدخل الرقم السري");if(pw===null)return;m.classList.remove("hidden");$("settingsBtn").setAttribute("aria-expanded","true")});
   $("settingsMenu").addEventListener("click",()=>{$("settingsMenu").classList.add("hidden");$("settingsBtn").setAttribute("aria-expanded","false")});
